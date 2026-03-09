@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Registro Alien San | Conéctate</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <style>
+        .reg-container {
+            max-width: 450px;
+            margin: 60px auto;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--acc-blue);
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
+        .btn-full {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, var(--acc-blue), var(--acc-green));
+            color: black;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            text-transform: uppercase;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body style="background: radial-gradient(circle at center, #111 0%, #050505 100%);">
+
+    <div class="reg-container card" style="background: rgba(0,0,0,0.8);">
+        <h1 class="alien-font" style="color: var(--acc-blue); font-size: 1.5rem;">BIENVENIDO AL SISTEMA</h1>
+        <p style="color: #888; font-size: 0.9rem; margin-bottom: 30px;">Inicia tu viaje de fidelización exponencial.</p>
+
+        <form>
+            <input type="text" placeholder="Nombre Completo" required>
+            <input type="email" placeholder="Correo Electrónico" required>
+            <input type="tel" placeholder="Teléfono" required>
+            <div style="text-align: left; margin-top: 20px;">
+                <label
+                    style="font-size: 0.7rem; color: var(--acc-green); text-transform: uppercase; letter-spacing: 1px;">Código
+                    de Recomendación (Mandatorio)</label>
+                <input type="text" placeholder="ALN-XXXX" style="border-color: var(--acc-green);"
+                    value="AUTO-ASSIGNED IF EMPTY" readonly>
+            </div>
+
+            <p style="font-size: 0.75rem; color: #555; margin-top: 15px;">
+                Al unirte, aceptas que tus consumos premien a quien te conectó y que tú recibas premios por conectar a
+                otros.
+            </p>
+
+            <button type="button" class="btn-full" onclick="alert('¡Alien registrado con éxito!')">UNIRME A LA
+                RED</button>
+        </form>
+    </div>
+
+    <div style="text-align: center; color: #333; font-size: 0.7rem; margin-top: 40px;">
+        POWERED BY ALIEN SAN ECOSYSTEM
+    </div>
+</body>
+
+</html>

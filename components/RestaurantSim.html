@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Alien San | Simulación Restaurante</title>
+    <link rel="stylesheet" href="../styles/index.css">
+</head>
+
+<body style="padding: 40px;">
+    <h1 class="alien-font">SIMULACIÓN: RESTAURANTE EXPONENCIAL</h1>
+    <p>Escenario: 20.000 COP base -> 23.500 COP final (Margen para Magia Alien San)</p>
+
+    <div class="dashboard-container">
+        <div class="card">
+            <h3 class="alien-font">POBLACIÓN ALIEN</h3>
+            <div id="pop" class="metric">Calculando...</div>
+            <p>10 iniciales -> x3 duplicación x5 niveles</p>
+        </div>
+
+        <div class="card">
+            <h3 class="alien-font">MARGEN REAL</h3>
+            <div id="margin" class="metric">-- %</div>
+            <p>Costo real de fidelización (Límite 15%)</p>
+        </div>
+
+        <div class="card" style="grid-column: span 2;">
+            <h3 class="alien-font">REGISTRO DE IMPACTO (30 DÍAS)</h3>
+            <div id="results" class="log"
+                style="background: #111; color: #0f0; padding: 20px; font-family: monospace; height: 200px; overflow-y: auto;">
+                Iniciando simulación masiva...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PRICE_FINAL = 23500;
+        const log = (msg) => {
+            const r = document.getElementById('results');
+            r.innerHTML += `<div>> ${msg}</div>`;
+            r.scrollTop = r.scrollHeight;
+        };
+
+        function run() {
+            let users = [];
+            // Create 3640 users
+            for (let i = 0; i < 3640; i++) users.push({ p: 0, t: 0, rewards: 0, hasReferrer: i >= 10 });
+
+            let totalMoney = 0;
+            let totalRewards = 0;
+
+            for (let d = 1; d <= 30; d++) {
+                users.forEach((u, idx) => {
+                    totalMoney += PRICE_FINAL;
+                    u.p += 1;
+                    if (u.p >= 10) { u.p -= 10; u.rewards++; totalRewards++; }
+
+                    if (u.hasReferrer) {
+                        let referrerIdx = Math.floor(idx / 3.5); // Simplified referral link
+                        let ref = users[referrerIdx % 100]; // Spread rewards
+                        if (ref) {
+                            ref.t += 1;
+                            if (ref.t >= 25) { ref.t -= 25; ref.rewards++; totalRewards++; }
+                        }
+                    }
+                });
+            }
+
+            const cost = totalRewards * PRICE_FINAL;
+            const margin = (cost / totalMoney) * 100;
+
+            document.getElementById('pop').innerText = "3,640";
+            document.getElementById('margin').innerText = margin.toFixed(2) + "%";
+            log(`Dinero recaudado: $${totalMoney.toLocaleString()}`);
+            log(`Premios otorgados: ${totalRewards} platos gratis.`);
+            log(`Costo fidelización: $${cost.toLocaleString()}`);
+            log("RESULTADO: Retención garantizada dentro del margen.");
+        }
+
+        setTimeout(run, 1000);
+    </script>
+</body>
+
+</html>

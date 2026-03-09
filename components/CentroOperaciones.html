@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alien San | SaaS Command Center</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --bg-dark: #050505;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+            transition: background 0.5s ease;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #businessLogo {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: black;
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .business-selector select {
+            background: #111;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Outfit';
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr 300px;
+            gap: 20px;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: 15px;
+            height: fit-content;
+        }
+
+        .alien-font {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary);
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .user-active-badge {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00ff88;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .product-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .product-item:hover {
+            border-color: var(--primary);
+            background: rgba(0, 242, 255, 0.1);
+        }
+
+        .network-tree {
+            font-size: 0.85rem;
+        }
+
+        .network-node {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 5px;
+        }
+
+        .btn-action {
+            background: var(--primary);
+            color: black;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-action:hover {
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        /* MODAL CONFIG */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #111;
+            padding: 30px;
+            border-radius: 20px;
+            width: 400px;
+            border: 1px solid var(--primary);
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .config-trigger {
+            background: none;
+            border: 1px solid #333;
+            color: #666;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 0.7rem;
+        }
+
+        .config-trigger:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-header">
+        <div class="brand-container">
+            <div id="businessLogo">A</div>
+            <div>
+                <h1 class="alien-font" id="displayBizName" style="margin:0;">Command Center v2.0</h1>
+                <span style="opacity: 0.6; font-size: 0.9rem;">Plataforma de Fidelización SaaS</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="config-trigger" onclick="toggleModal(true)">⚙ CONFIGURAR MARCA</button>
+            <div class="business-selector">
+                <select id="activeBusiness" onchange="updateBusinessContext()">
+                    <option value="REST_001">Alien Burgers (Restaurante)</option>
+                    <option value="SPA_002">Zen Alien Spa (Servicios)</option>
+                    <option value="CUSTOM">Configuración Personalizada</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIGURACIÓN DE MARCA Y REGLAS -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <h3 class="alien-font">Configuración SaaS</h3>
+
+            <div style="margin-top:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+                <label style="font-size:0.8rem; opacity:0.6;">IDENTIDAD VISUAL</label>
+                <input type="text" id="configBizName" placeholder="Nombre del Negocio"
+                    style="width:100%; padding:10px; background:#222; border:1px solid #444; color:white; border-radius:5px; margin-top:5px; margin-bottom:10px;">
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem;">Color Acento</label>
+                        <input type="color" id="configPrimaryColor" value="#00f2ff">
+                    </div>
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem;">Color Fondo</label>
+                        <input type="color" id="configBgColor" value="#050505">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:15px;">
+                <label style="font-size:0.8rem; opacity:0.6;">REGLAS DE FIDELIZACIÓN</label>
+                <div style="display:flex; gap:10px; margin-top:5px; margin-bottom:10px;">
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem;">Meta Personal (Compras)</label>
+                        <input type="number" id="configThresholdPersonal" value="10" min="1"
+                            style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+                    </div>
+                    <div style="flex:1">
+                        <label style="font-size:0.7rem;">Meta Referido (Puntos)</label>
+                        <input type="number" id="configThresholdReferral" value="25" min="1"
+                            style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white; border-radius:5px;">
+                    </div>
+                </div>
+                <small style="font-size:0.65rem; opacity:0.5; display:block;">Ej: 10 significa que la 11va unidad es
+                    gratis.</small>
+            </div>
+
+            <button class="btn-action" style="margin-top:20px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
+            <button class="btn-action" style="background:#333; color:white; margin-top:5px;"
+                onclick="toggleModal(false)">CERRAR</button>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <!-- IZQUIERDA: REGISTRO Y VENTAS -->
+        <div class="panel">
+            <h3 class="alien-font">Operaciones</h3>
+            <div id="opsPanel">
+                <label>Seleccionar Usuario</label>
+                <select id="userSelector"
+                    style="width:100%; padding:10px; background:#111; color:white; border:1px solid #333; border-radius:5px; margin-bottom:10px;">
+                    <option value="">-- Nuevo Cliente --</option>
+                </select>
+
+                <div id="newPatientForm" style="margin-top:20px;">
+                    <label>Nombre del Nuevo Alien</label>
+                    <input type="text" id="newName" placeholder="Ej: Jhon Doe"
+                        style="width:100%; padding:10px; background:#111; color:white; border:1px solid #333; border-radius:5px; box-sizing:border-box;">
+                    <label style="margin-top:10px; display:block;">Código Referido (Opcional)</label>
+                    <input type="text" id="refCode" placeholder="ALN-XYZ"
+                        style="width:100%; padding:10px; background:#111; color:white; border:1px solid #333; border-radius:5px; box-sizing:border-box;">
+                </div>
+
+                <h4 class="alien-font" style="margin-top:30px;">Catálogo</h4>
+                <div class="product-grid" id="catalogList">
+                    <!-- Items dinámicos -->
+                </div>
+
+                <div id="cartStatus"
+                    style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; display:none;">
+                    <strong>Carrito:</strong> <span id="cartItems">0</span> items
+                    <br>Total: <span id="cartTotal" style="color:var(--primary)">$0</span>
+                </div>
+
+                <button class="btn-action" onclick="executeSale()">REGISTRAR CONSUMO</button>
+            </div>
+        </div>
+
+        <!-- CENTRO: USUARIOS ACTIVOS Y MÉTRICAS -->
+        <div class="panel">
+            <h3 class="alien-font">Usuarios Activos en Consumo</h3>
+            <div id="activeUsersList">
+                <!-- Lista de usuarios activos -->
+            </div>
+        </div>
+
+        <!-- DERECHA: RED Y PUNTOS -->
+        <div class="panel">
+            <h3 class="alien-font">Red y Conexiones</h3>
+            <div id="networkStatus" class="network-tree">
+                <!-- Estado de la red de referidos -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Importación simulada de lógica
+        // Nota: En un entorno real usaríamos módulos JS
+
+        const state = {
+            currentBusinessId: 'REST_001',
+            users: JSON.parse(localStorage.getItem('saas_users')) || [],
+            cart: [],
+            customConfig: JSON.parse(localStorage.getItem('custom_brand')) || {
+                name: 'Mi Negocio Alien',
+                primary: '#00ff88',
+                bg: '#050a05',
+                thresholdPersonal: 10,
+                thresholdReferral: 25
+            }
+        };
+
+        // Datos mock de negocios y catálogos (esto vendría de businessService/catalogService)
+        const businessData = {
+            'REST_001': {
+                name: 'Alien Burgers',
+                currency: 'COP',
+                primary: '#00f2ff',
+                bg: '#050505',
+                thresholdPersonal: 10,
+                thresholdReferral: 25,
+                カタログ: [
+                    { id: 'P1', name: 'Alien Classic', price: 18000 },
+                    { id: 'P2', name: 'Supernova Fries', price: 7000 },
+                    { id: 'P3', name: 'Plasma Soda', price: 5000 }
+                ]
+            },
+            'SPA_002': {
+                name: 'Zen Alien Spa',
+                currency: 'USD',
+                primary: '#bc13fe',
+                bg: '#050505',
+                thresholdPersonal: 3,
+                thresholdReferral: 10,
+                カタログ: [
+                    { id: 'S1', name: 'Deep Massage', price: 60 },
+                    { id: 'S2', name: 'Facial Stardust', price: 45 },
+                    { id: 'S3', name: 'Zen Nails', price: 25 }
+                ]
+            }
+        };
+
+        window.toggleModal = (show) => {
+            if (show) {
+                // Pre-cargar valores actuales
+                document.getElementById('configBizName').value = state.customConfig.name;
+                document.getElementById('configPrimaryColor').value = state.customConfig.primary;
+                document.getElementById('configBgColor').value = state.customConfig.bg;
+                document.getElementById('configThresholdPersonal').value = state.customConfig.thresholdPersonal;
+                document.getElementById('configThresholdReferral').value = state.customConfig.thresholdReferral;
+            }
+            document.getElementById('configModal').style.display = show ? 'flex' : 'none';
+        };
+
+        window.saveConfig = () => {
+            state.customConfig = {
+                name: document.getElementById('configBizName').value,
+                primary: document.getElementById('configPrimaryColor').value,
+                bg: document.getElementById('configBgColor').value,
+                thresholdPersonal: parseInt(document.getElementById('configThresholdPersonal').value),
+                thresholdReferral: parseInt(document.getElementById('configThresholdReferral').value)
+            };
+
+            localStorage.setItem('custom_brand', JSON.stringify(state.customConfig));
+            document.getElementById('activeBusiness').value = 'CUSTOM';
+            updateBusinessContext();
+            toggleModal(false);
+        };
+
+        window.updateBusinessContext = function () {
+            state.currentBusinessId = document.getElementById('activeBusiness').value;
+            let biz;
+
+            if (state.currentBusinessId === 'CUSTOM') {
+                biz = {
+                    ...businessData['REST_001'], // Fallback catalog
+                    ...state.customConfig
+                };
+            } else {
+                biz = businessData[state.currentBusinessId];
+            }
+
+            // Aplicar Estética
+            document.documentElement.style.setProperty('--primary', biz.primary);
+            document.documentElement.style.setProperty('--bg-dark', biz.bg);
+            document.getElementById('displayBizName').innerText = biz.name;
+            document.getElementById('businessLogo').innerText = biz.name.charAt(0);
+            document.getElementById('businessLogo').style.background = biz.primary;
+            document.getElementById('businessLogo').style.boxShadow = `0 0 15px ${biz.primary}`;
+
+            renderCatalog(biz);
+            renderUsers();
+        };
+
+        function renderCatalog(biz) {
+            const list = document.getElementById('catalogList');
+            list.innerHTML = biz.カタログ.map(item => `
+                <div class="product-item" onclick="addToCart('${item.id}', '${item.name}', ${item.price})">
+                    <div style="font-weight:bold;">${item.name}</div>
+                    <div style="font-size:0.8rem; color:var(--primary)">${biz.currency} ${item.price}</div>
+                </div>
+            `).join('');
+        }
+
+        window.addToCart = function (id, name, price) {
+            state.cart.push({ id, name, price });
+            document.getElementById('cartStatus').style.display = 'block';
+            document.getElementById('cartItems').innerText = state.cart.length;
+            const total = state.cart.reduce((sum, item) => sum + item.price, 0);
+            const currency = state.currentBusinessId === 'CUSTOM' ? 'COP' : businessData[state.currentBusinessId].currency;
+            document.getElementById('cartTotal').innerText = currency + ' ' + total;
+        };
+
+        window.executeSale = function () {
+            if (state.cart.length === 0) return alert("Carrito vacío");
+
+            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : businessData[state.currentBusinessId];
+            const nameInput = document.getElementById('newName').value;
+            const selectorValue = document.getElementById('userSelector').value;
+
+            let user;
+            if (selectorValue) {
+                user = state.users.find(u => u.id === selectorValue);
+            } else if (nameInput) {
+                user = {
+                    id: 'ALN-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+                    name: nameInput,
+                    joined: new Date().toISOString(),
+                    personalProgress: 0,
+                    totalConsumed: 0,
+                    rewards: 0,
+                    referrerId: document.getElementById('refCode').value || null,
+                    networkPoints: 0
+                };
+                state.users.push(user);
+            } else {
+                return alert("Selecciona un usuario o escribe un nombre");
+            }
+
+            // Aplicar lógica de fidelización
+            const quantity = state.cart.length;
+            user.personalProgress += quantity;
+            user.totalConsumed += quantity;
+
+            if (user.personalProgress >= biz.thresholdPersonal) {
+                const wins = Math.floor(user.personalProgress / biz.thresholdPersonal);
+                user.rewards += wins;
+                user.personalProgress %= biz.thresholdPersonal;
+                alert(`¡PREMIO GANADO por ${user.name}! (${wins} unidades gratis)`);
+            }
+
+            // Lógica de referidos (simplificada para el demo frontend)
+            if (user.referrerId) {
+                const ref = state.users.find(u => u.id === user.referrerId);
+                if (ref) {
+                    ref.networkPoints += quantity;
+                    if (ref.networkPoints >= biz.thresholdReferral) {
+                        ref.rewards += Math.floor(ref.networkPoints / biz.thresholdReferral);
+                        ref.networkPoints %= biz.thresholdReferral;
+                    }
+                }
+            }
+
+            state.cart = [];
+            localStorage.setItem('saas_users', JSON.stringify(state.users));
+            renderUsers();
+            document.getElementById('cartStatus').style.display = 'none';
+            document.getElementById('newName').value = "";
+        };
+
+        function renderUsers() {
+            const list = document.getElementById('activeUsersList');
+            const select = document.getElementById('userSelector');
+            const network = document.getElementById('networkStatus');
+            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : businessData[state.currentBusinessId];
+
+            list.innerHTML = state.users.map(u => `
+                <div class="stat-card">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span><span class="user-active-badge"></span><strong>${u.name}</strong> (${u.id})</span>
+                        <span style="color:var(--primary)">${u.rewards} Premios</span>
+                    </div>
+                    <div style="font-size:0.8rem; opacity:0.7; margin-top:5px;">
+                        Progreso: ${u.personalProgress}/${biz.thresholdPersonal} | Total: ${u.totalConsumed} uds.
+                    </div>
+                </div>
+            `).join('');
+
+            select.innerHTML = '<option value="">-- Nuevo Cliente --</option>' +
+                state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+
+            network.innerHTML = state.users.filter(u => u.networkPoints > 0 || u.referrerId).map(u => `
+                <div class="network-node">
+                    <strong>${u.name}</strong> 
+                    <div style="font-size:0.75rem; opacity:0.6;">
+                        ${u.referrerId ? 'Invitado por: ' + u.referrerId : 'Crecimiento Red/Mérito: ' + u.networkPoints + '/' + biz.thresholdReferral}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        updateBusinessContext();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,7 @@
+# Gitignore para Alien San Brand
+.DS_Store
+node_modules/
+.env
+*.log
+tmp/
+.gemini/

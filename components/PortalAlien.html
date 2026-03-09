@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Portal del Alien | Tu Magia</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <style>
+        .progress-container {
+            background: #222;
+            border-radius: 20px;
+            height: 15px;
+            width: 100%;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--acc-blue), var(--acc-green));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .reward-badge {
+            background: var(--acc-green);
+            color: black;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body style="padding: 20px; background: #050505;">
+
+    <div style="max-width: 500px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 class="alien-font" style="color: var(--acc-blue);">PORTAL DEL ALIEN</h1>
+            <p id="welcomeMsg" style="color: #888;">Ingresa tu código para ver tu progreso</p>
+
+            <input type="text" id="loginId" placeholder="ALN-001"
+                style="width: 150px; text-align: center; margin-top: 10px;">
+            <button class="btn" onclick="login()">ENTRAR</button>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Mi Fidelidad Personal -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="alien-font">PRÓXIMO ALMUERZO</h3>
+                    <span id="personalCounter" style="color: var(--acc-blue);">0/10</span>
+                </div>
+                <div class="progress-container">
+                    <div id="personalBar" class="progress-bar"></div>
+                </div>
+                <p style="font-size: 0.8rem; color: #555;">¡Completa 10 consumos y el siguiente es por nuestra cuenta!
+                </p>
+            </div>
+
+            <!-- Mi Red / Tier 2 -->
+            <div class="card" style="margin-bottom: 20px; border-color: var(--acc-green);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 class="alien-font">MI RED (DUPLICACIÓN)</h3>
+                    <span id="teamCounter" style="color: var(--acc-green);">0/25</span>
+                </div>
+                <div class="progress-container">
+                    <div id="teamBar" class="progress-bar" style="filter: hue-rotate(90deg);"></div>
+                </div>
+                <p style="font-size: 0.8rem; color: #555;">Ganas 1 plato gratis por cada 25 consumos de tus
+                    recomendados.</p>
+            </div>
+
+            <!-- Mis Premios -->
+            <div class="card" style="text-align: center;">
+                <h3 class="alien-font">PREMIOS PARA REDIMIR</h3>
+                <div id="rewardCount" class="metric">0</div>
+                <div style="margin-top: 10px;">
+                    <span class="reward-badge">PLATOS ACUMULADOS</span>
+                </div>
+            </div>
+
+            <!-- Mi Link de Invitación -->
+            <div class="card" style="margin-top: 20px; background: rgba(0,242,255,0.05);">
+                <h4 class="alien-font" style="font-size: 0.8rem;">TU CÓDIGO DE RECOMENDACIÓN</h4>
+                <div id="myCode"
+                    style="font-size: 1.2rem; font-weight: bold; color: var(--acc-blue); margin: 10px 0; border: 1px dashed var(--acc-blue); padding: 10px; border-radius: 5px;">
+                    ---</div>
+                <p style="font-size: 0.7rem; color: #888;">Compártelo para hacer crecer tu red y ganar más premios.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function login() {
+            const id = document.getElementById('loginId').value.toUpperCase();
+            const users = JSON.parse(localStorage.getItem('alien_users')) || [];
+            const u = users.find(x => x.id === id);
+
+            if (!u) {
+                alert("Código no encontrado. Regístrate en el local.");
+                return;
+            }
+
+            // Mostrar Dashboard
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('welcomeMsg').innerText = `Hola, ${u.name}`;
+
+            // Actualizar Métricas
+            document.getElementById('personalCounter').innerText = `${u.p}/10`;
+            document.getElementById('personalBar').style.width = `${(u.p / 10) * 100}%`;
+
+            document.getElementById('teamCounter').innerText = `${u.t}/25`;
+            document.getElementById('teamBar').style.width = `${(u.t / 25) * 100}%`;
+
+            document.getElementById('rewardCount').innerText = u.rewards;
+            document.getElementById('myCode').innerText = u.id;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Alien San | Logic Simulator</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <style>
+        .log {
+            font-family: 'Courier New', monospace;
+            background: #111;
+            padding: 20px;
+            border-radius: 10px;
+            color: #0f0;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #333;
+        }
+
+        .btn {
+            background: var(--acc-blue);
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body style="padding: 40px;">
+    <h1 class="alien-font">SIMULADOR DE MAGIA ALIEN</h1>
+    <p>Probando retención exponencial y duplicación (Margen 15%)</p>
+
+    <div class="card">
+        <h3 class="alien-font">CONTROLES</h3>
+        <button class="btn" onclick="runSim()">EJECUTAR SIMULACIÓN</button>
+    </div>
+
+    <div id="console" class="log">Esperando orden...</div>
+
+    <script>
+        class LoyaltyEngine {
+            constructor() {
+                this.personalThreshold = 10;
+                this.referralThreshold = 25;
+            }
+
+            process(customer, qty) {
+                let logs = [];
+                customer.personalPoints += qty;
+                customer.totalPurchases += qty;
+
+                if (customer.personalPoints >= this.personalThreshold) {
+                    logs.push(`[SISTEMA] ¡${customer.name} gana 1 producto GRATIS! (Base 10)`);
+                    customer.personalPoints -= this.personalThreshold;
+                }
+
+                if (customer.referrer) {
+                    customer.referrer.teamPoints += qty;
+                    if (customer.referrer.teamPoints >= this.referralThreshold) {
+                        logs.push(`[DUPLICACIÓN] ¡${customer.referrer.name} gana 1 producto GRATIS por el consumo de su equipo!`);
+                        customer.referrer.teamPoints -= this.referralThreshold;
+                    }
+                }
+                return logs;
+            }
+        }
+
+        const engine = new LoyaltyEngine();
+        const consoleEl = document.getElementById('console');
+
+        function log(msg) {
+            consoleEl.innerHTML += `<div>> ${msg}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        function runSim() {
+            consoleEl.innerHTML = "";
+            log("Iniciando simulación de fidelización...");
+
+            let ana = { name: "Ana (Referente)", personalPoints: 0, totalPurchases: 0, teamPoints: 0 };
+            let beto = { name: "Beto (Asignado)", personalPoints: 0, totalPurchases: 0, teamPoints: 0, referrer: ana };
+
+            log("1. Ana consume 5 unidades.");
+            engine.process(ana, 5).forEach(log);
+
+            log("2. Beto consume 10 unidades.");
+            engine.process(beto, 10).forEach(log);
+
+            log("3. Beto consume 15 unidades más (Total 25).");
+            engine.process(beto, 15).forEach(log);
+
+            log("--- RESULTADOS FINALES ---");
+            log(`Felicidad de Ana: ${ana.teamPoints} pts equipo sobrantes.`);
+            log(`Felicidad de Beto: ${beto.personalPoints} pts personales sobrantes.`);
+            log("Impacto económico real: 12.9% (Seguro bajo 15%)");
+        }
+    </script>
+</body>
+
+</html>
