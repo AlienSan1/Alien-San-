@@ -1,0 +1,134 @@
+/* 🛸 Alien San Brand: Global Design System */
+
+:root {
+    /* Color Palette */
+    --acc-blue: #00f2ff;
+    --acc-green: #00ff88;
+    --acc-purple: #bc13fe;
+    --bg-dark: #050505;
+    --bg-card: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    
+    /* Typography */
+    --font-main: 'Outfit', sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: white;
+    font-family: var(--font-main);
+    margin: 0;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Premium Typography */
+.alien-font {
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--acc-blue), var(--acc-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Glassmorphism Cards */
+.card {
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 25px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 242, 255, 0.1);
+    border-color: var(--acc-blue);
+}
+
+/* Interactive Elements */
+.btn {
+    background: linear-gradient(135deg, var(--acc-blue), var(--acc-green));
+    color: black;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: 0.3s;
+    font-family: var(--font-main);
+}
+
+.btn:hover {
+    box-shadow: 0 0 20px var(--acc-blue);
+    transform: scale(1.05);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--acc-blue);
+    color: var(--acc-blue);
+    padding: 12px 30px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btn-outline:hover {
+    background: rgba(0, 242, 255, 0.1);
+    box-shadow: 0 0 15px var(--acc-blue);
+}
+
+/* Neon Effects */
+.neon-text-blue {
+    text-shadow: 0 0 10px var(--acc-blue);
+}
+
+.neon-border-green {
+    border: 1px solid var(--acc-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+/* Metrics Display */
+.metric {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--acc-blue);
+    margin: 10px 0;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.pulsing {
+    animation: pulse 2s infinite;
+}
+
+/* Utilities */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+input, select {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 12px;
+    border-radius: 10px;
+    outline: none;
+    transition: 0.3s;
+}
+
+input:focus, select:focus {
+    border-color: var(--acc-blue);
+    box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+}

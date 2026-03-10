@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alien San | SaaS de Fidelización Universal</title>
+    <link rel="stylesheet" href="styles/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: radial-gradient(circle at center, rgba(0, 242, 255, 0.05) 0%, transparent 70%);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 80px 0;
+        }
+
+        .nav {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="nav">
+        <div class="alien-font" style="font-size: 1.5rem;">ALIEN SAN</div>
+        <div>
+            <a href="components/PortalAlien.html" class="btn-outline"
+                style="text-decoration: none; margin-right: 15px;">MI PORTAL</a>
+            <a href="components/CentroOperaciones.html" class="btn" style="text-decoration: none;">COMMAND CENTER</a>
+        </div>
+    </nav>
+
+    <header class="hero container">
+        <h1 class="alien-font" style="font-size: 4rem; margin-bottom: 0;">SAAS FIDELIZACIÓN</h1>
+        <h2 style="font-weight: 300; color: #888; margin-top: 10px;">Transforma tus clientes en una red de crecimiento
+            exponencial</h2>
+        <div style="margin-top: 40px; display: flex; gap: 20px;">
+            <a href="components/CentroOperaciones.html" class="btn">PROBAR DEMO SAAS</a>
+            <a href="#features" class="btn-outline">VER FUNCIONALIDADES</a>
+        </div>
+    </header>
+
+    <main class="container" id="features">
+        <div class="features-grid">
+            <div class="card">
+                <h3 class="alien-font">MARCA BLANCA</h3>
+                <p>Personaliza logos, colores y reglas de fidelización en segundos para cualquier tipo de negocio.</p>
+            </div>
+            <div class="card">
+                <h3 class="alien-font">RED DE REFERIDOS</h3>
+                <p>Sistema meritocrático que premia a los clientes por traer nuevos usuarios a tu ecosistema.</p>
+            </div>
+            <div class="card">
+                <h3 class="alien-font">MÉTRICAS IA</h3>
+                <p>Panel de control inteligente con seguimiento de retención, duplicación y márgenes en tiempo real.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer style="padding: 60px; text-align: center; border-top: 1px solid var(--glass-border); margin-top: 80px;">
+        <p style="color: #444;">&copy; 2026 ALIEN SAN ECOSYSTEM | POWERED BY ADVANCED AGENTIC CODING</p>
+    </footer>
+
+</body>
+
+</html>
