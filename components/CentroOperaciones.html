@@ -300,9 +300,15 @@
                 </div>
 
                 <div id="cartStatus"
-                    style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; display:none;">
-                    <strong>Carrito:</strong> <span id="cartItems">0</span> items
-                    <br>Total: <span id="cartTotal" style="color:var(--primary)">$0</span>
+                    style="margin-top:20px; padding:15px; background:rgba(0,242,255,0.05); border:1px solid var(--primary); border-radius:10px; display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>Carrito:</strong> <span id="cartItems">0</span> items
+                    </div>
+                    <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem;">
+                        <span>Total: <span id="cartTotal" style="color:var(--primary)">$0</span></span>
+                        <span style="color:var(--acc-green); font-weight:bold;">+<span id="cartPoints">0</span>
+                            Pts</span>
+                    </div>
                 </div>
 
                 <button class="btn-action" onclick="executeSale()">REGISTRAR CONSUMO</button>
@@ -311,7 +317,10 @@
 
         <!-- CENTRO: USUARIOS ACTIVOS Y MÉTRICAS -->
         <div class="panel">
-            <h3 class="alien-font">Usuarios Activos en Consumo</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 class="alien-font">Usuarios Activos</h3>
+                <button class="config-trigger" onclick="toggleCatalogManager(true)">📦 GESTIONAR CATÁLOGO</button>
+            </div>
             <div id="activeUsersList">
                 <!-- Lista de usuarios activos -->
             </div>
@@ -326,172 +335,152 @@
         </div>
     </div>
 
-    <script type="module">
-        // Importación simulada de lógica
-        // Nota: En un entorno real usaríamos módulos JS
+    <!-- MODAL: GESTOR DE CATÁLOGO (CRUD) -->
+    <div id="catalogModal" class="modal">
+        <div class="modal-content" style="width: 500px;">
+            <h3 class="alien-font">Gestor de Catálogo</h3>
 
+            <div style="margin-bottom:20px; border-bottom:1px solid #333; padding-bottom:15px;">
+                <label style="font-size:0.8rem; opacity:0.6;">AÑADIR NUEVO PRODUCTO</label>
+                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px; margin-top:10px;">
+                    <input type="text" id="newProdName" placeholder="Nombre">
+                    <input type="number" id="newProdPrice" placeholder="Precio">
+                    <input type="number" id="newProdPoints" placeholder="Puntos">
+                </div>
+                <button class="btn-action" style="margin-top:10px; padding:8px;" onclick="addNewProduct()">Añadir al
+                    Catálogo</button>
+            </div>
+
+            <div id="catalogManagerList" style="max-height: 300px; overflow-y: auto;">
+                <!-- Lista de productos con opción de eliminar -->
+            </div>
+
+            <button class="btn-action" style="background:#333; color:white; margin-top:20px;"
+                onclick="toggleCatalogManager(false)">CERRAR</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Mocking behavior for demo - In production these would be imported from /logic/
         const state = {
             currentBusinessId: 'REST_001',
             users: JSON.parse(localStorage.getItem('saas_users')) || [],
             cart: [],
             customConfig: JSON.parse(localStorage.getItem('custom_brand')) || {
                 name: 'Mi Negocio Alien',
-                primary: '#00ff88',
+                primary: '#00f2ff',
                 bg: '#050a05',
-                thresholdPersonal: 10,
-                thresholdReferral: 25
+                thresholdPersonal: 100, // Now points based
+                thresholdReferral: 500
             }
         };
 
-        // Datos mock de negocios y catálogos (esto vendría de businessService/catalogService)
         const businessData = {
             'REST_001': {
-                name: 'Alien Burgers',
-                currency: 'COP',
-                primary: '#00f2ff',
-                bg: '#050505',
-                thresholdPersonal: 10,
-                thresholdReferral: 25,
-                カタログ: [
-                    { id: 'P1', name: 'Alien Classic', price: 18000 },
-                    { id: 'P2', name: 'Supernova Fries', price: 7000 },
-                    { id: 'P3', name: 'Plasma Soda', price: 5000 }
-                ]
+                name: 'Alien Burgers', currency: 'COP', primary: '#00f2ff', bg: '#050505',
+                thresholdPersonal: 100, thresholdReferral: 500
             },
             'SPA_002': {
-                name: 'Zen Alien Spa',
-                currency: 'USD',
-                primary: '#bc13fe',
-                bg: '#050505',
-                thresholdPersonal: 3,
-                thresholdReferral: 10,
-                カタログ: [
-                    { id: 'S1', name: 'Deep Massage', price: 60 },
-                    { id: 'S2', name: 'Facial Stardust', price: 45 },
-                    { id: 'S3', name: 'Zen Nails', price: 25 }
-                ]
+                name: 'Zen Alien Spa', currency: 'USD', primary: '#bc13fe', bg: '#050505',
+                thresholdPersonal: 200, thresholdReferral: 1000
             }
         };
 
-        window.toggleModal = (show) => {
-            if (show) {
-                // Pre-cargar valores actuales
-                document.getElementById('configBizName').value = state.customConfig.name;
-                document.getElementById('configPrimaryColor').value = state.customConfig.primary;
-                document.getElementById('configBgColor').value = state.customConfig.bg;
-                document.getElementById('configThresholdPersonal').value = state.customConfig.thresholdPersonal;
-                document.getElementById('configThresholdReferral').value = state.customConfig.thresholdReferral;
-            }
-            document.getElementById('configModal').style.display = show ? 'flex' : 'none';
-        };
-
-        window.saveConfig = () => {
-            state.customConfig = {
-                name: document.getElementById('configBizName').value,
-                primary: document.getElementById('configPrimaryColor').value,
-                bg: document.getElementById('configBgColor').value,
-                thresholdPersonal: parseInt(document.getElementById('configThresholdPersonal').value),
-                thresholdReferral: parseInt(document.getElementById('configThresholdReferral').value)
-            };
-
-            localStorage.setItem('custom_brand', JSON.stringify(state.customConfig));
-            document.getElementById('activeBusiness').value = 'CUSTOM';
-            updateBusinessContext();
-            toggleModal(false);
+        // UI Toggles
+        window.toggleModal = (show) => document.getElementById('configModal').style.display = show ? 'flex' : 'none';
+        window.toggleCatalogManager = (show) => {
+            if (show) renderCatalogManager();
+            document.getElementById('catalogModal').style.display = show ? 'flex' : 'none';
         };
 
         window.updateBusinessContext = function () {
             state.currentBusinessId = document.getElementById('activeBusiness').value;
-            let biz;
+            let biz = state.currentBusinessId === 'CUSTOM' ? { ...businessData['REST_001'], ...state.customConfig } : businessData[state.currentBusinessId];
 
-            if (state.currentBusinessId === 'CUSTOM') {
-                biz = {
-                    ...businessData['REST_001'], // Fallback catalog
-                    ...state.customConfig
-                };
-            } else {
-                biz = businessData[state.currentBusinessId];
-            }
-
-            // Aplicar Estética
             document.documentElement.style.setProperty('--primary', biz.primary);
             document.documentElement.style.setProperty('--bg-dark', biz.bg);
             document.getElementById('displayBizName').innerText = biz.name;
             document.getElementById('businessLogo').innerText = biz.name.charAt(0);
             document.getElementById('businessLogo').style.background = biz.primary;
-            document.getElementById('businessLogo').style.boxShadow = `0 0 15px ${biz.primary}`;
 
-            renderCatalog(biz);
+            renderCatalog();
             renderUsers();
         };
 
-        function renderCatalog(biz) {
+        function getCatalog() {
+            const stored = localStorage.getItem(`catalog_${state.currentBusinessId}`);
+            if (stored) return JSON.parse(stored);
+
+            // Default demo catalogs
+            const defaults = {
+                'REST_001': [
+                    { id: 'P1', name: 'Alien Classic', price: 18000, points: 10 },
+                    { id: 'P2', name: 'Supernova Fries', price: 7000, points: 5 },
+                    { id: 'P3', name: 'Plasma Soda', price: 5000, points: 2 }
+                ],
+                'SPA_002': [
+                    { id: 'S1', name: 'Deep Massage', price: 60, points: 50 },
+                    { id: 'S2', name: 'Facial Stardust', price: 45, points: 30 },
+                    { id: 'S3', name: 'Zen Nails', price: 25, points: 15 }
+                ]
+            };
+            return defaults[state.currentBusinessId] || defaults['REST_001'];
+        }
+
+        function renderCatalog() {
             const list = document.getElementById('catalogList');
-            list.innerHTML = biz.カタログ.map(item => `
-                <div class="product-item" onclick="addToCart('${item.id}', '${item.name}', ${item.price})">
+            const catalog = getCatalog();
+            const biz = businessData[state.currentBusinessId] || state.customConfig;
+
+            list.innerHTML = catalog.map(item => `
+                <div class="product-item" onclick="addToCart('${item.id}', '${item.name}', ${item.price}, ${item.points})">
                     <div style="font-weight:bold;">${item.name}</div>
-                    <div style="font-size:0.8rem; color:var(--primary)">${biz.currency} ${item.price}</div>
+                    <div style="font-size:0.75rem; color:var(--primary)">${biz.currency} ${item.price}</div>
+                    <div style="font-size:0.7rem; color:#00ff88;">+${item.points} Pts</div>
                 </div>
             `).join('');
         }
 
-        window.addToCart = function (id, name, price) {
-            state.cart.push({ id, name, price });
+        window.addToCart = function (id, name, price, points) {
+            state.cart.push({ id, name, price, points });
             document.getElementById('cartStatus').style.display = 'block';
             document.getElementById('cartItems').innerText = state.cart.length;
             const total = state.cart.reduce((sum, item) => sum + item.price, 0);
-            const currency = state.currentBusinessId === 'CUSTOM' ? 'COP' : businessData[state.currentBusinessId].currency;
+            const totalPoints = state.cart.reduce((sum, item) => sum + item.points, 0);
+            const currency = (businessData[state.currentBusinessId] || state.customConfig).currency;
             document.getElementById('cartTotal').innerText = currency + ' ' + total;
+            document.getElementById('cartPoints').innerText = totalPoints;
         };
 
         window.executeSale = function () {
             if (state.cart.length === 0) return alert("Carrito vacío");
-
             const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : businessData[state.currentBusinessId];
             const nameInput = document.getElementById('newName').value;
             const selectorValue = document.getElementById('userSelector').value;
 
-            let user;
-            if (selectorValue) {
-                user = state.users.find(u => u.id === selectorValue);
-            } else if (nameInput) {
+            let user = selectorValue ? state.users.find(u => u.id === selectorValue) : null;
+            if (!user && nameInput) {
                 user = {
                     id: 'ALN-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
                     name: nameInput,
                     joined: new Date().toISOString(),
-                    personalProgress: 0,
+                    points: 0,
                     totalConsumed: 0,
                     rewards: 0,
-                    referrerId: document.getElementById('refCode').value || null,
-                    networkPoints: 0
+                    referrerId: document.getElementById('refCode').value || null
                 };
                 state.users.push(user);
-            } else {
-                return alert("Selecciona un usuario o escribe un nombre");
-            }
+            } else if (!user) return alert("Selecciona un usuario");
 
-            // Aplicar lógica de fidelización
-            const quantity = state.cart.length;
-            user.personalProgress += quantity;
-            user.totalConsumed += quantity;
+            const pointsEarned = state.cart.reduce((sum, i) => sum + i.points, 0);
+            user.points += pointsEarned;
+            user.totalConsumed += state.cart.length;
 
-            if (user.personalProgress >= biz.thresholdPersonal) {
-                const wins = Math.floor(user.personalProgress / biz.thresholdPersonal);
+            if (user.points >= biz.thresholdPersonal) {
+                const wins = Math.floor(user.points / biz.thresholdPersonal);
                 user.rewards += wins;
-                user.personalProgress %= biz.thresholdPersonal;
-                alert(`¡PREMIO GANADO por ${user.name}! (${wins} unidades gratis)`);
-            }
-
-            // Lógica de referidos (simplificada para el demo frontend)
-            if (user.referrerId) {
-                const ref = state.users.find(u => u.id === user.referrerId);
-                if (ref) {
-                    ref.networkPoints += quantity;
-                    if (ref.networkPoints >= biz.thresholdReferral) {
-                        ref.rewards += Math.floor(ref.networkPoints / biz.thresholdReferral);
-                        ref.networkPoints %= biz.thresholdReferral;
-                    }
-                }
+                user.points %= biz.thresholdPersonal;
+                alert(`¡OBJETIVO ALCANZADO! ${user.name} ha ganado ${wins} premio(s).`);
             }
 
             state.cart = [];
@@ -501,35 +490,65 @@
             document.getElementById('newName').value = "";
         };
 
+        window.addNewProduct = function () {
+            const name = document.getElementById('newProdName').value;
+            const price = parseFloat(document.getElementById('newProdPrice').value);
+            const points = parseInt(document.getElementById('newProdPoints').value);
+
+            if (!name || isNaN(price) || isNaN(points)) return alert("Completa todos los campos");
+
+            const catalog = getCatalog();
+            catalog.push({ id: Date.now().toString(), name, price, points });
+            localStorage.setItem(`catalog_${state.currentBusinessId}`, JSON.stringify(catalog));
+
+            document.getElementById('newProdName').value = "";
+            document.getElementById('newProdPrice').value = "";
+            document.getElementById('newProdPoints').value = "";
+
+            renderCatalogManager();
+            renderCatalog();
+        };
+
+        window.removeProduct = function (id) {
+            const catalog = getCatalog().filter(p => p.id !== id);
+            localStorage.setItem(`catalog_${state.currentBusinessId}`, JSON.stringify(catalog));
+            renderCatalogManager();
+            renderCatalog();
+        };
+
+        function renderCatalogManager() {
+            const list = document.getElementById('catalogManagerList');
+            const catalog = getCatalog();
+            list.innerHTML = catalog.map(p => `
+                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #222; font-size:0.9rem;">
+                    <span>${p.name} ($${p.price} | ${p.points}pts)</span>
+                    <button onclick="removeProduct('${p.id}')" style="color:#ff4444; background:none; border:none; cursor:pointer;">✖ Eliminar</button>
+                </div>
+            `).join('');
+        }
+
         function renderUsers() {
             const list = document.getElementById('activeUsersList');
             const select = document.getElementById('userSelector');
-            const network = document.getElementById('networkStatus');
             const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : businessData[state.currentBusinessId];
 
             list.innerHTML = state.users.map(u => `
                 <div class="stat-card">
                     <div style="display:flex; justify-content:space-between;">
-                        <span><span class="user-active-badge"></span><strong>${u.name}</strong> (${u.id})</span>
-                        <span style="color:var(--primary)">${u.rewards} Premios</span>
+                        <span><strong>${u.name}</strong></span>
+                        <span style="color:var(--acc-green)">${u.rewards} Premios</span>
                     </div>
-                    <div style="font-size:0.8rem; opacity:0.7; margin-top:5px;">
-                        Progreso: ${u.personalProgress}/${biz.thresholdPersonal} | Total: ${u.totalConsumed} uds.
+                    <div style="font-size:0.8rem; margin-top:5px;">
+                        Puntos: ${u.points} / ${biz.thresholdPersonal}
+                        <div style="height:4px; background:#222; border-radius:2px; margin-top:5px;">
+                            <div style="height:100%; background:var(--primary); width:${Math.min(100, (u.points / biz.thresholdPersonal) * 100)}%;"></div>
+                        </div>
                     </div>
                 </div>
             `).join('');
 
             select.innerHTML = '<option value="">-- Nuevo Cliente --</option>' +
                 state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-
-            network.innerHTML = state.users.filter(u => u.networkPoints > 0 || u.referrerId).map(u => `
-                <div class="network-node">
-                    <strong>${u.name}</strong> 
-                    <div style="font-size:0.75rem; opacity:0.6;">
-                        ${u.referrerId ? 'Invitado por: ' + u.referrerId : 'Crecimiento Red/Mérito: ' + u.networkPoints + '/' + biz.thresholdReferral}
-                    </div>
-                </div>
-            `).join('');
         }
 
         updateBusinessContext();

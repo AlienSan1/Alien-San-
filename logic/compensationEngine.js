@@ -29,45 +29,46 @@ class LoyaltyEngine {
     processPurchase(customer, saleDetails) {
         let events = [];
         const quantity = saleDetails.quantity || 1;
+        // Points can be passed directly or calculated from catalog (fallback to 1 per qty)
+        const pointsEarned = saleDetails.pointsEarned || quantity;
 
         // 1. Update personal tracking
-        customer.personalProgress = (customer.personalProgress || 0) + quantity;
-        customer.totalAccumulated = (customer.totalAccumulated || 0) + quantity;
+        customer.personalProgress = (customer.personalProgress || 0) + pointsEarned;
+        customer.totalAccumulatedPoints = (customer.totalAccumulatedPoints || 0) + pointsEarned;
         customer.history = customer.history || [];
 
         customer.history.push({
             date: new Date().toISOString(),
             businessId: this.businessId,
             items: saleDetails.items || [],
-            quantity: quantity,
-            amount: saleDetails.amount || (quantity * this.rules.pricePerUnit)
+            pointsEarned: pointsEarned,
+            amount: saleDetails.amount || 0
         });
 
-        // Check for personal reward
-        if (customer.personalProgress >= this.rules.personal.threshold) {
-            const rewardCount = Math.floor(customer.personalProgress / this.rules.personal.threshold);
-            customer.personalProgress %= this.rules.personal.threshold;
+        // Check for personal reward based on points threshold
+        const threshold = this.rules.personal.threshold || 100; // Default to 100 points
+        if (customer.personalProgress >= threshold) {
+            const rewardCount = Math.floor(customer.personalProgress / threshold);
+            customer.personalProgress %= threshold;
             customer.rewardsAvailable = (customer.rewardsAvailable || 0) + rewardCount;
 
             events.push({
                 type: 'PERSONAL_REWARD',
                 businessName: this.businessName,
-                message: `¡Recompensa en ${this.businessName}! Has ganado ${rewardCount} beneficio(s).`,
+                message: `¡ALERTA DE PREMIO! Has acumulado suficientes puntos en ${this.businessName}. ¡${rewardCount} premio(s) desbloqueado(s)!`,
                 count: rewardCount
             });
         }
 
         // 2. Update referrer points (Network Logic)
         if (customer.referrerId) {
-            // Note: In a real system, we'd fetch the referrer object here
-            // This event signals the system to update the referrer's network points
             events.push({
                 type: 'NETWORK_CONTRIBUTION',
                 referrerId: customer.referrerId,
                 contributorId: customer.id,
                 contributorName: customer.name,
-                points: quantity,
-                threshold: this.rules.referral.threshold
+                points: pointsEarned,
+                threshold: this.rules.referral.threshold || 500
             });
         }
 
