@@ -3,60 +3,59 @@
  * Manages multiple business profiles for the SaaS platform.
  */
 
-class BusinessService {
+import { supabase } from './supabaseClient.js';
+
+export class BusinessService {
     constructor() {
-        this.businesses = new Map();
-        this.initDemo();
+        // No longer using internal Map for persistence
     }
 
-    initDemo() {
-        // Ejemplo de Negocio de Producto (Restaurante)
-        this.registerBusiness({
-            id: 'REST_001',
-            name: 'Alien Burgers',
-            type: 'PRODUCT',
-            currency: 'COP',
-            pricePerUnit: 25000,
-            rules: {
-                personal: { threshold: 5, rewardType: 'BURGER_FREE' },
-                referral: { threshold: 15, rewardType: 'COMBO_FREE' }
-            },
-            theme: {
-                primary: '#00f2ff',
-                bg: '#0a0a0a'
-            }
-        });
-
-        // Ejemplo de Negocio de Servicio (Spa)
-        this.registerBusiness({
-            id: 'SPA_002',
-            name: 'Zen Alien Spa',
-            type: 'SERVICE',
-            currency: 'USD',
-            pricePerUnit: 50,
-            rules: {
-                personal: { threshold: 3, rewardType: 'REFLEXOLOGY_FREE' },
-                referral: { threshold: 10, rewardType: 'MASSAGE_FREE' }
-            },
-            theme: {
-                primary: '#bc13fe',
-                bg: '#050505'
-            }
-        });
+    async getBusiness(id) {
+        const { data, error } = await supabase
+            .from('businesses')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
+        if (error) {
+            console.error(`Error obteniendo negocio ${id}:`, error);
+            return null;
+        }
+        return data;
     }
 
-    registerBusiness(config) {
-        this.businesses.set(config.id, config);
-        console.log(`Negocio registrado: ${config.name} (${config.id})`);
+    async getAllBusinesses() {
+        const { data, error } = await supabase
+            .from('businesses')
+            .select('*');
+        
+        if (error) {
+            console.error('Error obteniendo negocios:', error);
+            return [];
+        }
+        return data;
     }
 
-    getBusiness(id) {
-        return this.businesses.get(id);
-    }
+    async registerBusiness(config) {
+        const { data, error } = await supabase
+            .from('businesses')
+            .upsert({
+                id: config.id,
+                name: config.name,
+                type: config.type,
+                currency: config.currency,
+                price_per_unit: config.pricePerUnit,
+                theme_primary: config.theme?.primary || config.primary,
+                theme_bg: config.theme?.bg || config.bg,
+                rules: config.rules
+            });
 
-    getAllBusinesses() {
-        return Array.from(this.businesses.values());
+        if (error) {
+            console.error(`Error registrando negocio ${config.name}:`, error);
+            throw error;
+        }
+        return data;
     }
 }
 
-module.exports = new BusinessService();
+export const businessService = new BusinessService();

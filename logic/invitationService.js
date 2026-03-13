@@ -1,12 +1,8 @@
-/**
- * Alien San - Invitation & Spillover Service
- */
+import { supabase } from './supabaseClient.js';
+import LoyaltyEngine from './compensationEngine.js';
 
-const LoyaltyEngine = require('./compensationEngine');
-
-class InvitationService {
-    constructor(db) {
-        this.db = db; // Placeholder for DB connection
+export default class InvitationService {
+    constructor() {
         this.engine = new LoyaltyEngine();
     }
 
@@ -17,28 +13,40 @@ class InvitationService {
      */
     async assignReferrer(newUser, inviteCode = null) {
         if (inviteCode) {
-            const referrer = await this.db.findUserByCode(inviteCode);
-            if (referrer) return referrer.id;
+            // Find referrer by ID or Code (assuming inviteCode is the user ID for now)
+            const { data: referrer, error } = await supabase
+                .from('users')
+                .select('id')
+                .eq('id', inviteCode)
+                .single();
+            
+            if (referrer && !error) return referrer.id;
         }
 
         // NO CODE? Meritocratic Spillover (Derrame)
         console.log("Iniciando Derrame Meritocrático para nuevo Alien...");
 
-        const candidates = await this.db.getTopActiveUsers(10); // Top 10 users
+        const { data: candidates, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('merit_score', { ascending: false })
+            .limit(10);
 
-        // Sort by Merit Score
+        if (error || !candidates || candidates.length === 0) {
+            console.log("No hay candidatos para derrame. Queda huérfano o asignado al sistema.");
+            return null;
+        }
+
+        // Sort by Merit Score (server side already did some, but we calculate locally if needed)
         const scoredCandidates = candidates.map(user => ({
             id: user.id,
             score: this.engine.calculateMeritScore(user)
         })).sort((a, b) => b.score - a.score);
 
-        // Weighted random selection (higher merit => higher chance)
-        // For now, simple random among top 10 as requested
+        // Weighted random selection
         const winner = scoredCandidates[Math.floor(Math.random() * scoredCandidates.length)];
 
         console.log(`Usuario asignado a: ${winner.id} por mérito.`);
         return winner.id;
     }
 }
-
-module.exports = InvitationService;

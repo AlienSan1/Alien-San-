@@ -324,6 +324,11 @@
             <div id="activeUsersList">
                 <!-- Lista de usuarios activos -->
             </div>
+
+            <h3 class="alien-font" style="margin-top:40px;">Historial de Ventas</h3>
+            <div id="salesHistory" style="font-size: 0.8rem; max-height: 300px; overflow-y: auto;">
+                <!-- Historial dinámico -->
+            </div>
         </div>
 
         <!-- DERECHA: RED Y PUNTOS -->
@@ -361,29 +366,27 @@
     </div>
 
     <script type="module">
-        // Mocking behavior for demo - In production these would be imported from /logic/
+        import { supabase } from '../logic/supabaseClient.js';
+        import { businessService } from '../logic/businessService.js';
+        import { catalogService } from '../logic/catalogService.js';
+        import { transactionService } from '../logic/transactionService.js';
+        import LoyaltyEngine from '../logic/compensationEngine.js';
+
         const state = {
             currentBusinessId: 'REST_001',
             users: JSON.parse(localStorage.getItem('saas_users')) || [],
             cart: [],
             customConfig: JSON.parse(localStorage.getItem('custom_brand')) || {
+                id: 'CUSTOM',
                 name: 'Mi Negocio Alien',
                 primary: '#00f2ff',
                 bg: '#050a05',
-                thresholdPersonal: 100, // Now points based
-                thresholdReferral: 500
-            }
-        };
-
-        const businessData = {
-            'REST_001': {
-                name: 'Alien Burgers', currency: 'COP', primary: '#00f2ff', bg: '#050505',
-                thresholdPersonal: 100, thresholdReferral: 500
+                rules: {
+                    personal: { threshold: 100, rewardType: 'CUSTOM_REWARD' },
+                    referral: { threshold: 500, rewardType: 'NETWORK_REWARD' }
+                }
             },
-            'SPA_002': {
-                name: 'Zen Alien Spa', currency: 'USD', primary: '#bc13fe', bg: '#050505',
-                thresholdPersonal: 200, thresholdReferral: 1000
-            }
+            engine: null
         };
 
         // UI Toggles
@@ -393,44 +396,33 @@
             document.getElementById('catalogModal').style.display = show ? 'flex' : 'none';
         };
 
-        window.updateBusinessContext = function () {
+        window.updateBusinessContext = async function () {
             state.currentBusinessId = document.getElementById('activeBusiness').value;
-            let biz = state.currentBusinessId === 'CUSTOM' ? { ...businessData['REST_001'], ...state.customConfig } : businessData[state.currentBusinessId];
+            let biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
 
-            document.documentElement.style.setProperty('--primary', biz.primary);
-            document.documentElement.style.setProperty('--bg-dark', biz.bg);
+            if (!biz) {
+                console.error("Negocio no encontrado");
+                return;
+            }
+
+            // Init Engine with real logic
+            state.engine = new LoyaltyEngine(biz);
+
+            document.documentElement.style.setProperty('--primary', biz.theme?.primary || biz.theme_primary || biz.primary);
+            document.documentElement.style.setProperty('--bg-dark', biz.theme?.bg || biz.theme_bg || biz.bg);
             document.getElementById('displayBizName').innerText = biz.name;
             document.getElementById('businessLogo').innerText = biz.name.charAt(0);
-            document.getElementById('businessLogo').style.background = biz.primary;
+            document.getElementById('businessLogo').style.background = biz.theme?.primary || biz.theme_primary || biz.primary;
 
-            renderCatalog();
-            renderUsers();
+            await renderCatalog();
+            await renderUsers();
+            await renderHistory();
         };
 
-        function getCatalog() {
-            const stored = localStorage.getItem(`catalog_${state.currentBusinessId}`);
-            if (stored) return JSON.parse(stored);
-
-            // Default demo catalogs
-            const defaults = {
-                'REST_001': [
-                    { id: 'P1', name: 'Alien Classic', price: 18000, points: 10 },
-                    { id: 'P2', name: 'Supernova Fries', price: 7000, points: 5 },
-                    { id: 'P3', name: 'Plasma Soda', price: 5000, points: 2 }
-                ],
-                'SPA_002': [
-                    { id: 'S1', name: 'Deep Massage', price: 60, points: 50 },
-                    { id: 'S2', name: 'Facial Stardust', price: 45, points: 30 },
-                    { id: 'S3', name: 'Zen Nails', price: 25, points: 15 }
-                ]
-            };
-            return defaults[state.currentBusinessId] || defaults['REST_001'];
-        }
-
-        function renderCatalog() {
+        async function renderCatalog() {
             const list = document.getElementById('catalogList');
-            const catalog = getCatalog();
-            const biz = businessData[state.currentBusinessId] || state.customConfig;
+            const catalog = await catalogService.getItems(state.currentBusinessId);
+            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
 
             list.innerHTML = catalog.map(item => `
                 <div class="product-item" onclick="addToCart('${item.id}', '${item.name}', ${item.price}, ${item.points})">
@@ -441,84 +433,159 @@
             `).join('');
         }
 
-        window.addToCart = function (id, name, price, points) {
+        window.addToCart = async function (id, name, price, points) {
             state.cart.push({ id, name, price, points });
             document.getElementById('cartStatus').style.display = 'block';
             document.getElementById('cartItems').innerText = state.cart.length;
             const total = state.cart.reduce((sum, item) => sum + item.price, 0);
             const totalPoints = state.cart.reduce((sum, item) => sum + item.points, 0);
-            const currency = (businessData[state.currentBusinessId] || state.customConfig).currency;
-            document.getElementById('cartTotal').innerText = currency + ' ' + total;
+            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
+            document.getElementById('cartTotal').innerText = (biz.currency || '$') + ' ' + total;
             document.getElementById('cartPoints').innerText = totalPoints;
         };
 
-        window.executeSale = function () {
+        window.executeSale = async function () {
             if (state.cart.length === 0) return alert("Carrito vacío");
-            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : businessData[state.currentBusinessId];
             const nameInput = document.getElementById('newName').value;
             const selectorValue = document.getElementById('userSelector').value;
 
             let user = selectorValue ? state.users.find(u => u.id === selectorValue) : null;
+            
             if (!user && nameInput) {
                 user = {
                     id: 'ALN-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
                     name: nameInput,
-                    joined: new Date().toISOString(),
-                    points: 0,
-                    totalConsumed: 0,
-                    rewards: 0,
-                    referrerId: document.getElementById('refCode').value || null
+                    joined_at: new Date().toISOString(),
+                    personal_progress: 0,
+                    total_accumulated: 0,
+                    rewards_available: 0,
+                    referrer_id: document.getElementById('refCode').value || null,
+                    business_id: state.currentBusinessId
                 };
-                state.users.push(user);
             } else if (!user) return alert("Selecciona un usuario");
 
-            const pointsEarned = state.cart.reduce((sum, i) => sum + i.points, 0);
-            user.points += pointsEarned;
-            user.totalConsumed += state.cart.length;
+            const saleDetails = {
+                items: state.cart.map(i => ({ name: i.name, price: i.price, qty: 1 })),
+                amount: state.cart.reduce((sum, i) => sum + i.price, 0),
+                pointsEarned: state.cart.reduce((sum, i) => sum + i.points, 0),
+                totalQuantity: state.cart.length
+            };
 
-            if (user.points >= biz.thresholdPersonal) {
-                const wins = Math.floor(user.points / biz.thresholdPersonal);
-                user.rewards += wins;
-                user.points %= biz.thresholdPersonal;
-                alert(`¡OBJETIVO ALCANZADO! ${user.name} ha ganado ${wins} premio(s).`);
+            const result = state.engine.processPurchase(user, saleDetails);
+            
+            // Handle events from Engine
+            for (const event of result.events) {
+                if (event.type === 'PERSONAL_REWARD') {
+                    alert(event.message);
+                }
+                if (event.type === 'NETWORK_CONTRIBUTION') {
+                    // Actualizar al referente en DB
+                    const { data: refUser } = await supabase.from('users').select('*').eq('id', event.referrer_id).single();
+                    if (refUser) {
+                        refUser.total_accumulated = (refUser.total_accumulated || 0) + event.points;
+                        const refThreshold = event.threshold;
+                        if (refUser.total_accumulated >= refThreshold) {
+                            refUser.rewards_available = (refUser.rewards_available || 0) + 1;
+                            refUser.total_accumulated -= refThreshold;
+                        }
+                        await supabase.from('users').upsert(refUser);
+                    }
+                }
             }
 
+            // Record transaction in DB
+            await transactionService.recordTransaction({
+                userId: user.id,
+                businessId: state.currentBusinessId,
+                amount: saleDetails.amount,
+                pointsEarned: saleDetails.pointsEarned,
+                items: saleDetails.items,
+                totalQuantity: saleDetails.totalQuantity
+            });
+
+            // Update user state in DB
+            await supabase.from('users').upsert({
+                id: user.id,
+                name: user.name,
+                business_id: user.business_id,
+                personal_progress: user.personal_progress,
+                total_accumulated: user.total_accumulated,
+                rewards_available: user.rewards_available,
+                referrer_id: user.referrer_id
+            });
+
             state.cart = [];
-            localStorage.setItem('saas_users', JSON.stringify(state.users));
-            renderUsers();
+            await renderUsers();
+            await renderHistory();
             document.getElementById('cartStatus').style.display = 'none';
             document.getElementById('newName').value = "";
+            document.getElementById('refCode').value = "";
         };
 
-        window.addNewProduct = function () {
+        async function renderHistory() {
+            const list = document.getElementById('salesHistory');
+            const history = await transactionService.getBusinessHistory(state.currentBusinessId);
+            
+            list.innerHTML = history.map(tx => `
+                <div style="padding:10px; border-bottom:1px solid #222; margin-bottom:5px; background:rgba(255,255,255,0.02); border-radius:5px;">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                        <span>${tx.users?.name || 'Alien'}</span>
+                        <span style="color:var(--primary)">$${tx.amount}</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#666;">
+                        ${new Date(tx.created_at).toLocaleString()} | ${tx.total_quantity} items
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--acc-green); margin-top:2px;">
+                        +${tx.points_earned} Pts ganados
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.addNewProduct = async function () {
             const name = document.getElementById('newProdName').value;
             const price = parseFloat(document.getElementById('newProdPrice').value);
             const points = parseInt(document.getElementById('newProdPoints').value);
 
             if (!name || isNaN(price) || isNaN(points)) return alert("Completa todos los campos");
 
-            const catalog = getCatalog();
-            catalog.push({ id: Date.now().toString(), name, price, points });
-            localStorage.setItem(`catalog_${state.currentBusinessId}`, JSON.stringify(catalog));
+            await catalogService.addItem(state.currentBusinessId, { name, price, points });
 
             document.getElementById('newProdName').value = "";
             document.getElementById('newProdPrice').value = "";
             document.getElementById('newProdPoints').value = "";
 
-            renderCatalogManager();
-            renderCatalog();
+            await renderCatalogManager();
+            await renderCatalog();
         };
 
-        window.removeProduct = function (id) {
-            const catalog = getCatalog().filter(p => p.id !== id);
-            localStorage.setItem(`catalog_${state.currentBusinessId}`, JSON.stringify(catalog));
-            renderCatalogManager();
-            renderCatalog();
+        window.removeProduct = async function (id) {
+            await catalogService.removeItem(state.currentBusinessId, id);
+            await renderCatalogManager();
+            await renderCatalog();
         };
 
-        function renderCatalogManager() {
+        window.saveConfig = function() {
+            const newBiz = {
+                id: 'CUSTOM',
+                name: document.getElementById('configBizName').value || 'Mi Negocio Alien',
+                primary: document.getElementById('configPrimaryColor').value,
+                bg: document.getElementById('configBgColor').value,
+                rules: {
+                    personal: { threshold: parseInt(document.getElementById('configThresholdPersonal').value), rewardType: 'REWARD' },
+                    referral: { threshold: parseInt(document.getElementById('configThresholdReferral').value), rewardType: 'REF_REWARD' }
+                },
+                currency: 'ALIEN'
+            };
+            state.customConfig = newBiz;
+            localStorage.setItem('custom_brand', JSON.stringify(newBiz));
+            if (state.currentBusinessId === 'CUSTOM') updateBusinessContext();
+            toggleModal(false);
+        };
+
+        async function renderCatalogManager() {
             const list = document.getElementById('catalogManagerList');
-            const catalog = getCatalog();
+            const catalog = await catalogService.getItems(state.currentBusinessId);
             list.innerHTML = catalog.map(p => `
                 <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #222; font-size:0.9rem;">
                     <span>${p.name} ($${p.price} | ${p.points}pts)</span>
@@ -527,21 +594,31 @@
             `).join('');
         }
 
-        function renderUsers() {
+        async function renderUsers() {
             const list = document.getElementById('activeUsersList');
             const select = document.getElementById('userSelector');
-            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : businessData[state.currentBusinessId];
+            
+            // Sync users from Supabase
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('business_id', state.currentBusinessId);
+            
+            if (!error && data) state.users = data;
+
+            const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
+            const threshold = biz?.rules?.personal?.threshold || 10;
 
             list.innerHTML = state.users.map(u => `
                 <div class="stat-card">
                     <div style="display:flex; justify-content:space-between;">
                         <span><strong>${u.name}</strong></span>
-                        <span style="color:var(--acc-green)">${u.rewards} Premios</span>
+                        <span style="color:var(--acc-green)">${u.rewards_available || 0} Premios</span>
                     </div>
                     <div style="font-size:0.8rem; margin-top:5px;">
-                        Puntos: ${u.points} / ${biz.thresholdPersonal}
+                        Puntos: ${u.personal_progress || 0} / ${threshold}
                         <div style="height:4px; background:#222; border-radius:2px; margin-top:5px;">
-                            <div style="height:100%; background:var(--primary); width:${Math.min(100, (u.points / biz.thresholdPersonal) * 100)}%;"></div>
+                            <div style="height:100%; background:var(--primary); width:${Math.min(100, ((u.personal_progress || 0) / threshold) * 100)}%;"></div>
                         </div>
                     </div>
                 </div>

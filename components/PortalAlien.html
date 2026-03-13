@@ -76,8 +76,17 @@
             <div class="card" style="text-align: center;">
                 <h3 class="alien-font">PREMIOS PARA REDIMIR</h3>
                 <div id="rewardCount" class="metric">0</div>
-                <div style="margin-top: 10px;">
+                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
                     <span class="reward-badge">PLATOS ACUMULADOS</span>
+                    <button id="redeemBtn" class="btn" style="display:none; width: 100%;" onclick="redeemReward()">REDIMIR AHORA</button>
+                </div>
+            </div>
+
+            <!-- Historial de Compras -->
+            <div class="card" style="margin-top:20px;">
+                <h3 class="alien-font">MIS COMPRAS</h3>
+                <div id="userHistory" style="font-size: 0.8rem; margin-top:10px;">
+                    <!-- Historial dinámico -->
                 </div>
             </div>
 
@@ -92,30 +101,105 @@
         </div>
     </div>
 
-    <script>
-        function login() {
-            const id = document.getElementById('loginId').value.toUpperCase();
-            const users = JSON.parse(localStorage.getItem('alien_users')) || [];
-            const u = users.find(x => x.id === id);
+    <script type="module">
+        import { supabase } from '../logic/supabaseClient.js';
+        import { transactionService } from '../logic/transactionService.js';
 
-            if (!u) {
-                alert("Código no encontrado. Regístrate en el local.");
+        const state = {
+            currentUser: null
+        };
+
+        window.login = async function() {
+            const id = document.getElementById('loginId').value.toUpperCase();
+            
+            const { data: u, error } = await supabase
+                .from('users')
+                .select('*, businesses(*)')
+                .eq('id', id)
+                .single();
+
+            if (error || !u) {
+                alert("Código no encontrado o error de conexión.");
                 return;
             }
+
+            state.currentUser = u;
 
             // Mostrar Dashboard
             document.getElementById('dashboard').style.display = 'block';
             document.getElementById('welcomeMsg').innerText = `Hola, ${u.name}`;
 
             // Actualizar Métricas
-            document.getElementById('personalCounter').innerText = `${u.p}/10`;
-            document.getElementById('personalBar').style.width = `${(u.p / 10) * 100}%`;
+            const biz = u.businesses;
+            const threshold = biz?.rules?.personal?.threshold || 10;
+            const progress = u.personal_progress || 0;
+            
+            document.getElementById('personalCounter').innerText = `${progress}/${threshold}`;
+            document.getElementById('personalBar').style.width = `${Math.min(100, (progress / threshold) * 100)}%`;
 
-            document.getElementById('teamCounter').innerText = `${u.t}/25`;
-            document.getElementById('teamBar').style.width = `${(u.t / 25) * 100}%`;
+            // Para la red (Derrame / Tier 2)
+            const teamThreshold = biz?.rules?.referral?.threshold || 25;
+            document.getElementById('teamCounter').innerText = `${u.total_accumulated || 0}/${teamThreshold}`;
+            document.getElementById('teamBar').style.width = `${Math.min(100, ((u.total_accumulated || 0) / teamThreshold) * 100)}%`;
 
-            document.getElementById('rewardCount').innerText = u.rewards;
+            document.getElementById('rewardCount').innerText = u.rewards_available || 0;
+            document.getElementById('redeemBtn').style.display = u.rewards_available > 0 ? 'block' : 'none';
             document.getElementById('myCode').innerText = u.id;
+
+            await renderUserHistory(u.id);
+        }
+
+        async function renderUserHistory(userId) {
+            const list = document.getElementById('userHistory');
+            const history = await transactionService.getUserHistory(userId);
+
+            if (history.length === 0) {
+                list.innerHTML = "<p style='color:#444;'>No tienes compras registradas aún.</p>";
+                return;
+            }
+
+            list.innerHTML = history.map(tx => `
+                <div style="padding:10px; border-bottom:1px solid #222; margin-bottom:5px; background:rgba(255,255,255,0.02); border-radius:5px;">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                        <span>Compra #${tx.id.substr(0,5)}</span>
+                        <span style="color:var(--acc-blue)">$${tx.amount}</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#666;">
+                        ${new Date(tx.created_at).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.redeemReward = async function() {
+            const u = state.currentUser;
+            if (!u || u.rewards_available <= 0) return;
+
+            if (confirm("¿Deseas redimir 1 premio ahora?")) {
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({ rewards_available: u.rewards_available - 1 })
+                    .eq('id', u.id);
+
+                if (!updateError) {
+                    await transactionService.recordRedemption({
+                        userId: u.id,
+                        businessId: u.business_id,
+                        rewardType: 'REWARD_CLAIMED',
+                        pointsSpent: 0 // Points already deducted from progress in Engine
+                    });
+                    alert("¡Premio redimido con éxito! Muestra este mensaje al encargado.");
+                    login(); // Refresh UI
+                }
+            }
+        }
+
+        // Auto-login from URL search param
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoId = urlParams.get('id');
+        if (autoId) {
+            document.getElementById('loginId').value = autoId;
+            login();
         }
     </script>
 </body>

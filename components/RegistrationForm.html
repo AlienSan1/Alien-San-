@@ -51,16 +51,15 @@
         <h1 class="alien-font" style="color: var(--acc-blue); font-size: 1.5rem;">BIENVENIDO AL SISTEMA</h1>
         <p style="color: #888; font-size: 0.9rem; margin-bottom: 30px;">Inicia tu viaje de fidelización exponencial.</p>
 
-        <form>
-            <input type="text" placeholder="Nombre Completo" required>
-            <input type="email" placeholder="Correo Electrónico" required>
-            <input type="tel" placeholder="Teléfono" required>
+        <form id="regForm">
+            <input type="text" id="regName" placeholder="Nombre Completo" required>
+            <input type="email" id="regEmail" placeholder="Correo Electrónico" required>
+            <input type="tel" id="regPhone" placeholder="Teléfono" required>
             <div style="text-align: left; margin-top: 20px;">
                 <label
                     style="font-size: 0.7rem; color: var(--acc-green); text-transform: uppercase; letter-spacing: 1px;">Código
-                    de Recomendación (Mandatorio)</label>
-                <input type="text" placeholder="ALN-XXXX" style="border-color: var(--acc-green);"
-                    value="AUTO-ASSIGNED IF EMPTY" readonly>
+                    de Recomendación</label>
+                <input type="text" id="regInviteCode" placeholder="ALN-XXXX" style="border-color: var(--acc-green);">
             </div>
 
             <p style="font-size: 0.75rem; color: #555; margin-top: 15px;">
@@ -68,10 +67,49 @@
                 otros.
             </p>
 
-            <button type="button" class="btn-full" onclick="alert('¡Alien registrado con éxito!')">UNIRME A LA
-                RED</button>
+            <button type="submit" class="btn-full">UNIRME A LA RED</button>
         </form>
     </div>
+
+    <script type="module">
+        import { supabase } from '../logic/supabaseClient.js';
+        import InvitationService from '../logic/invitationService.js';
+
+        const inviteService = new InvitationService();
+
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const phone = document.getElementById('regPhone').value;
+            const inviteCode = document.getElementById('regInviteCode').value;
+
+            const newUser = {
+                id: 'ALN-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+                name,
+                email,
+                phone,
+                joined_at: new Date().toISOString()
+            };
+
+            // 1. Assign Referrer (Spillover logic)
+            const referrerId = await inviteService.assignReferrer(newUser, inviteCode);
+            newUser.referrer_id = referrerId;
+
+            // 2. Save to Supabase
+            const { error } = await supabase
+                .from('users')
+                .insert(newUser);
+
+            if (error) {
+                alert("Error al registrar: " + error.message);
+            } else {
+                alert(`¡Alien registrado con éxito! Tu código es: ${newUser.id}`);
+                window.location.href = 'PortalAlien.html?id=' + newUser.id;
+            }
+        });
+    </script>
 
     <div style="text-align: center; color: #333; font-size: 0.7rem; margin-top: 40px;">
         POWERED BY ALIEN SAN ECOSYSTEM

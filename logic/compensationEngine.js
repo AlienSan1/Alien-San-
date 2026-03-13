@@ -3,7 +3,7 @@
  * Mission: Custom brand retention for products or services.
  */
 
-class LoyaltyEngine {
+export default class LoyaltyEngine {
     /**
      * @param {Object} businessConfig - Configuration for the specific business
      */
@@ -29,28 +29,18 @@ class LoyaltyEngine {
     processPurchase(customer, saleDetails) {
         let events = [];
         const quantity = saleDetails.quantity || 1;
-        // Points can be passed directly or calculated from catalog (fallback to 1 per qty)
         const pointsEarned = saleDetails.pointsEarned || quantity;
 
         // 1. Update personal tracking
-        customer.personalProgress = (customer.personalProgress || 0) + pointsEarned;
-        customer.totalAccumulatedPoints = (customer.totalAccumulatedPoints || 0) + pointsEarned;
-        customer.history = customer.history || [];
-
-        customer.history.push({
-            date: new Date().toISOString(),
-            businessId: this.businessId,
-            items: saleDetails.items || [],
-            pointsEarned: pointsEarned,
-            amount: saleDetails.amount || 0
-        });
+        customer.personal_progress = (customer.personal_progress || 0) + pointsEarned;
+        customer.total_accumulated = (customer.total_accumulated || 0) + pointsEarned;
 
         // Check for personal reward based on points threshold
-        const threshold = this.rules.personal.threshold || 100; // Default to 100 points
-        if (customer.personalProgress >= threshold) {
-            const rewardCount = Math.floor(customer.personalProgress / threshold);
-            customer.personalProgress %= threshold;
-            customer.rewardsAvailable = (customer.rewardsAvailable || 0) + rewardCount;
+        const threshold = this.rules.personal.threshold || 10; 
+        if (customer.personal_progress >= threshold) {
+            const rewardCount = Math.floor(customer.personal_progress / threshold);
+            customer.personal_progress %= threshold;
+            customer.rewards_available = (customer.rewards_available || 0) + rewardCount;
 
             events.push({
                 type: 'PERSONAL_REWARD',
@@ -60,15 +50,15 @@ class LoyaltyEngine {
             });
         }
 
-        // 2. Update referrer points (Network Logic)
-        if (customer.referrerId) {
+        // 2. Network Logic - Contribution to Referrer
+        if (customer.referrer_id) {
             events.push({
                 type: 'NETWORK_CONTRIBUTION',
-                referrerId: customer.referrerId,
-                contributorId: customer.id,
-                contributorName: customer.name,
+                referrer_id: customer.referrer_id,
+                contributor_id: customer.id,
+                contributor_name: customer.name,
                 points: pointsEarned,
-                threshold: this.rules.referral.threshold || 500
+                threshold: this.rules.referral.threshold || 25
             });
         }
 
@@ -92,5 +82,4 @@ class LoyaltyEngine {
     }
 }
 
-module.exports = LoyaltyEngine;
 
