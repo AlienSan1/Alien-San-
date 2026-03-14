@@ -774,20 +774,31 @@
             const list = document.getElementById('salesHistory');
             const history = await transactionService.getBusinessHistory(state.currentBusinessId);
             
-            list.innerHTML = history.map(tx => `
-                <div style="padding:10px; border-bottom:1px solid #222; margin-bottom:5px; background:rgba(255,255,255,0.02); border-radius:5px;">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                        <span>${tx.users?.name || 'Alien'}</span>
-                        <span style="color:var(--primary)">$${tx.amount}</span>
+            if (history.length === 0) {
+                list.innerHTML = "<p style='color:#444; text-align:center; padding:20px;'>No hay transacciones aún.</p>";
+                return;
+            }
+
+            list.innerHTML = history.map(tx => {
+                const date = new Date(tx.created_at);
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString();
+                
+                return `
+                <div style="padding:15px; border-bottom:1px solid #333; margin-bottom:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left: 3px solid var(--primary);">
+                    <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="font-weight:bold; color: #fff;">${tx.users?.name || 'Alien Solitario'}</span>
+                        <span style="color:var(--primary); font-weight: bold; font-size: 1.1rem;">$${tx.amount.toLocaleString()}</span>
                     </div>
-                    <div style="font-size:0.7rem; color:#666;">
-                        ${new Date(tx.created_at).toLocaleString()} | ${tx.total_quantity} items
+                    <div style="display: flex; justify-content: space-between; font-size:0.75rem; color:#aaa;">
+                        <span>📅 ${dateStr} - 🕒 ${timeStr}</span>
+                        <span style="opacity: 0.8;">📦 ${tx.total_quantity} items</span>
                     </div>
-                    <div style="font-size:0.75rem; color:var(--acc-green); margin-top:2px;">
-                        +${tx.points_earned} Pts ganados
+                    <div style="font-size:0.75rem; color: #00ff88; margin-top:5px; font-weight: 500;">
+                        ✨ +${tx.points_earned} Pts Galácticos
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         window.addNewProduct = async function () {
