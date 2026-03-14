@@ -232,12 +232,15 @@
                 <span style="opacity: 0.6; font-size: 0.9rem;">Plataforma de Fidelización SaaS</span>
             </div>
         </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
+        <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-end;">
             <button class="config-trigger" onclick="toggleModal(true)">⚙ CONFIGURAR MARCA</button>
-            <div class="business-selector">
-                <select id="activeBusiness" onchange="updateBusinessContext()">
-                    <!-- Se carga dinámicamente -->
-                </select>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div class="business-selector">
+                    <select id="activeBusiness" onchange="updateBusinessContext()">
+                        <!-- Se carga dinámicamente -->
+                    </select>
+                </div>
+                <button class="config-trigger" style="background:var(--primary); color:black; border:none; padding:5px 12px; font-weight:bold;" onclick="createNewBusiness()">➕ NUEVO NEGOCIO</button>
             </div>
         </div>
     </div>
@@ -281,8 +284,7 @@
                     gratis.</small>
             </div>
 
-            <button class="btn-action" style="background:var(--primary); color:black;" onclick="createNewBusiness()">➕ NUEVO NEGOCIO</button>
-            <button class="btn-action" style="margin-top:5px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
+            <button class="btn-action" style="margin-top:20px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
             <button id="deleteBizBtn" class="btn-action" style="background:#ff4444; color:white; margin-top:5px; display:none;"
                 onclick="deleteBusiness()">ELIMINAR ESTE NEGOCIO</button>
             <button class="btn-action" style="background:#333; color:white; margin-top:5px;"
