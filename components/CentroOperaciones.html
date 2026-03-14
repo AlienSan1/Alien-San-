@@ -303,6 +303,20 @@
                     <label>Nombre del Nuevo Alien</label>
                     <input type="text" id="newName" placeholder="Ej: Jhon Doe"
                         style="width:100%; padding:10px; background:#111; color:white; border:1px solid #333; border-radius:5px; box-sizing:border-box;">
+                    
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <div style="flex:1">
+                            <label style="font-size:0.7rem;">WhatsApp</label>
+                            <input type="tel" id="newPhone" placeholder="+57 300..."
+                                style="width:100%; padding:8px; background:#111; color:white; border:1px solid #333; border-radius:5px; box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1">
+                            <label style="font-size:0.7rem;">Email</label>
+                            <input type="email" id="newEmail" placeholder="alien@san.com"
+                                style="width:100%; padding:8px; background:#111; color:white; border:1px solid #333; border-radius:5px; box-sizing:border-box;">
+                        </div>
+                    </div>
+
                     <label style="margin-top:10px; display:block;">Código Referido (Opcional)</label>
                     <input type="text" id="refCode" placeholder="ALN-XYZ"
                         style="width:100%; padding:10px; background:#111; color:white; border:1px solid #333; border-radius:5px; box-sizing:border-box;">
@@ -518,11 +532,16 @@
         window.executeSale = async function () {
             if (state.cart.length === 0) return alert("Carrito vacío");
             const nameInput = document.getElementById('newName').value;
+            const phoneInput = document.getElementById('newPhone').value;
+            const emailInput = document.getElementById('newEmail').value;
             const selectorValue = document.getElementById('userSelector').value;
 
             let user = selectorValue ? state.users.find(u => u.id === selectorValue) : null;
             
             if (!user && nameInput) {
+                if (!phoneInput || !emailInput) {
+                    return alert("👽 ¡Atención! Para registrar un nuevo Alien necesitamos su WhatsApp y Correo para enviarle sus premios futuros.");
+                }
                 const refCodeInput = document.getElementById('refCode').value;
                 let resolvedReferrerId = null;
 
@@ -551,6 +570,8 @@
                 user = {
                     id: 'ALN-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
                     name: nameInput,
+                    phone: phoneInput,
+                    email: emailInput,
                     joined_at: new Date().toISOString(),
                     personal_progress: 0,
                     total_accumulated: 0,
@@ -598,7 +619,9 @@
                     personal_progress: user.personal_progress,
                     total_accumulated: user.total_accumulated,
                     rewards_available: user.rewards_available,
-                    referrer_id: user.referrer_id
+                    referrer_id: user.referrer_id,
+                    phone: user.phone,
+                    email: user.email
                 });
 
                 if (userError) throw userError;
@@ -618,6 +641,8 @@
                 await renderHistory();
                 document.getElementById('cartStatus').style.display = 'none';
                 document.getElementById('newName').value = "";
+                document.getElementById('newPhone').value = "";
+                document.getElementById('newEmail').value = "";
                 document.getElementById('refCode').value = "";
                 alert("Consumo registrado exitosamente.");
             } catch (error) {
@@ -729,6 +754,30 @@
             toggleModal(false);
         };
 
+        window.tryRedeem = async function (userId) {
+            const user = state.users.find(u => u.id === userId);
+            if (!user) return;
+
+            if (!user.phone || !user.email) {
+                const newPhone = prompt(`⚠️ Para reclamar el premio, necesitamos completar los datos de ${user.name}.\n\nIngresa WhatsApp:`, user.phone || "");
+                if (!newPhone) return;
+                const newEmail = prompt(`Ingresa Correo Electrónico:`, user.email || "");
+                if (!newEmail) return;
+
+                try {
+                    const { error } = await supabase.from('users').update({ phone: newPhone, email: newEmail }).eq('id', userId);
+                    if (error) throw error;
+                    user.phone = newPhone;
+                    user.email = newEmail;
+                    alert("Datos actualizados con éxito.");
+                } catch (err) {
+                    return alert("Error al actualizar datos: " + err.message);
+                }
+            }
+
+            redeemReward(user.id, user.rewards_available);
+        };
+
         window.redeemReward = async function(userId, currentRewards) {
             if (currentRewards <= 0) return;
             if (!confirm(`¿Confirmas que el cliente va a redimir 1 premio ahora? Se descontará de su saldo.`)) return;
@@ -790,8 +839,11 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong>${u.name}</strong>
                         <div style="display:flex; gap:5px;">
-                            ${(u.rewards_available > 0) ? `<button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#00ff88; color:black;" onclick="redeemReward('${u.id}', ${u.rewards_available})">REDIMIR (${u.rewards_available})</button>` : `<span style="color:var(--acc-green); font-size:0.7rem;">${u.rewards_available || 0} Premios</span>`}
+                            ${(u.rewards_available > 0) ? `<button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#00ff88; color:black;" onclick="tryRedeem('${u.id}')">REDIMIR (${u.rewards_available})</button>` : `<span style="color:var(--acc-green); font-size:0.7rem;">${u.rewards_available || 0} Premios</span>`}
                         </div>
+                    </div>
+                    <div style="font-size:0.65rem; opacity:0.6; margin-top:4px;">
+                        ${(u.phone && u.email) ? `📱 ${u.phone} | ✉️ ${u.email}` : `<span style="color:#ff4444; font-weight:bold;">⚠️ Faltan datos de contacto</span>`}
                     </div>
                     <div style="font-size:0.75rem; margin-top:8px; display:flex; flex-direction:column; gap:3px;">
                         <div style="display:flex; justify-content:space-between;">
