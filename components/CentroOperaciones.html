@@ -281,6 +281,8 @@
             </div>
 
             <button class="btn-action" style="margin-top:20px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
+            <button id="deleteBizBtn" class="btn-action" style="background:#ff4444; color:white; margin-top:5px; display:none;"
+                onclick="deleteBusiness()">ELIMINAR ESTE NEGOCIO</button>
             <button class="btn-action" style="background:#333; color:white; margin-top:5px;"
                 onclick="toggleModal(false)">CERRAR</button>
         </div>
@@ -437,6 +439,10 @@
                 const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
                 document.getElementById('configPrimaryColor').value = primary.startsWith('#') ? primary : '#00f2ff';
                 document.getElementById('configBgColor').value = bg.startsWith('#') ? bg : '#050505';
+                
+                // Show delete button only for existing businesses that aren't the default ones
+                const isDefault = ['REST_001', 'SPA_002', 'CUSTOM'].includes(state.currentBusinessId);
+                document.getElementById('deleteBizBtn').style.display = isDefault ? 'none' : 'block';
             }
             document.getElementById('configModal').style.display = show ? 'flex' : 'none';
         };
@@ -475,18 +481,19 @@
             const { data: businesses } = await supabase.from('businesses').select('id, name, type');
             
             if (businesses) {
-                // Filtrar duplicados por ID y asegurar que tengan nombre
-                const uniqueBusinesses = [];
-                const seenIds = new Set();
+                // Deduplicate by NAME to avoid confusing UI when multiple records exist
+                const uniqueByNormalizedName = [];
+                const seenNames = new Set();
                 
                 businesses.forEach(b => {
-                    if (b.name && !seenIds.has(b.id)) {
-                        uniqueBusinesses.push(b);
-                        seenIds.add(b.id);
+                    const normalized = (b.name || '').trim().toLowerCase();
+                    if (normalized && !seenNames.has(normalized)) {
+                        uniqueByNormalizedName.push(b);
+                        seenNames.add(normalized);
                     }
                 });
 
-                let html = uniqueBusinesses.map(b => `
+                let html = uniqueByNormalizedName.map(b => `
                     <option value="${b.id}" ${b.id === state.currentBusinessId ? 'selected' : ''}>
                         ${b.name} (${b.type === 'SERVICE' ? 'Servicios' : 'Productos'})
                     </option>
@@ -816,6 +823,22 @@
 
             if (state.currentBusinessId === 'CUSTOM') updateBusinessContext();
             toggleModal(false);
+        };
+
+        window.deleteBusiness = async function() {
+            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente el negocio "${document.getElementById('displayBizName').innerText}"?\n\nEsta acción NO se puede deshacer.`)) return;
+
+            try {
+                const { error } = await supabase.from('businesses').delete().eq('id', state.currentBusinessId);
+                if (error) throw error;
+
+                alert("Negocio eliminado correctamente.");
+                state.currentBusinessId = 'REST_001'; // Fallback to default
+                toggleModal(false);
+                await updateBusinessContext();
+            } catch (err) {
+                alert("Error al eliminar: " + err.message);
+            }
         };
 
         window.editUserContact = async function(userId) {
