@@ -329,13 +329,15 @@
 
                 <div id="cartStatus"
                     style="margin-top:20px; padding:15px; background:rgba(0,242,255,0.05); border:1px solid var(--primary); border-radius:10px; display:none;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <strong>Carrito:</strong> <span id="cartItems">0</span> items
+                    <div style="font-size:0.8rem; margin-bottom:10px; border-bottom:1px solid var(--primary); padding-bottom:5px;">LISTA DE COMPRA</div>
+                    <div id="cartItemList" style="max-height:150px; overflow-y:auto; margin-bottom:10px; font-size:0.75rem;">
+                        <!-- Items del carrito -->
                     </div>
-                    <div style="margin-top:10px; display:flex; justify-content:space-between; font-size:1.1rem;">
-                        <span>Total: <span id="cartTotal" style="color:var(--primary)">$0</span></span>
-                        <span style="color:var(--acc-green); font-weight:bold;">+<span id="cartPoints">0</span>
-                            Pts</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>Total:</strong> <span id="cartTotal" style="color:var(--primary); font-size:1.1rem;">$0</span>
+                    </div>
+                    <div style="margin-top:5px; font-size:0.8rem; color:var(--acc-green); font-weight:bold;">
+                        Ganarás +<span id="cartPoints">0</span> Pts
                     </div>
                 </div>
 
@@ -467,7 +469,23 @@
             await renderUsers();
             await renderHistory();
             await renderRedemptionHistory();
+            await populateBusinessSelector(); // Mantener sincronizada la lista
         };
+
+        async function populateBusinessSelector() {
+            const select = document.getElementById('activeBusiness');
+            const { data: businesses } = await supabase.from('businesses').select('id, name, type');
+            
+            if (businesses) {
+                let html = businesses.map(b => `
+                    <option value="${b.id}" ${b.id === state.currentBusinessId ? 'selected' : ''}>
+                        ${b.name} (${b.type === 'SERVICE' ? 'Servicios' : 'Productos'})
+                    </option>
+                `).join('');
+                html += `<option value="CUSTOM" ${state.currentBusinessId === 'CUSTOM' ? 'selected' : ''}>Configuración Personalizada</option>`;
+                select.innerHTML = html;
+            }
+        }
 
         async function renderRedemptionHistory() {
             const container = document.getElementById('redemptionHistory');
@@ -525,15 +543,39 @@
         }
 
         window.addToCart = async function (id, name, price, points) {
-            state.cart.push({ id, name, price, points });
+            state.cart.push({ id, name, price, points, cartId: Date.now() + Math.random() });
+            renderCart();
+        };
+
+        window.removeFromCart = function (cartId) {
+            state.cart = state.cart.filter(item => item.cartId !== cartId);
+            renderCart();
+        };
+
+        async function renderCart() {
+            const list = document.getElementById('cartItemList');
+            if (state.cart.length === 0) {
+                document.getElementById('cartStatus').style.display = 'none';
+                return;
+            }
+
             document.getElementById('cartStatus').style.display = 'block';
-            document.getElementById('cartItems').innerText = state.cart.length;
+            list.innerHTML = state.cart.map(item => `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; padding:5px; background:rgba(255,255,255,0.02); border-radius:4px;">
+                    <span>${item.name}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="opacity:0.6;">$${item.price}</span>
+                        <button onclick="removeFromCart(${item.cartId})" style="background:none; border:none; color:#ff4444; cursor:pointer; font-size:0.8rem;">✖</button>
+                    </div>
+                </div>
+            `).join('');
+
             const total = state.cart.reduce((sum, item) => sum + item.price, 0);
             const totalPoints = state.cart.reduce((sum, item) => sum + item.points, 0);
             const biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
             document.getElementById('cartTotal').innerText = (biz.currency || '$') + ' ' + total;
             document.getElementById('cartPoints').innerText = totalPoints;
-        };
+        }
 
         window.executeSale = async function () {
             if (state.cart.length === 0) return alert("Carrito vacío");
@@ -756,6 +798,7 @@
                 console.log("Configuración guardada exitosamente.");
                 alert("Configuración de marca actualizada.");
                 updateBusinessContext();
+                populateBusinessSelector(); // Update selector manually after save
             } catch (err) {
                 console.error("Error al registrar marca:", err);
                 const msg = err.message || err.details || "Error de red o permisos";
@@ -764,6 +807,27 @@
 
             if (state.currentBusinessId === 'CUSTOM') updateBusinessContext();
             toggleModal(false);
+        };
+
+        window.editUserContact = async function(userId) {
+            const user = state.users.find(u => u.id === userId);
+            if (!user) return;
+
+            const newPhone = prompt(`Actualizar WhatsApp para ${user.name}:`, user.phone || "");
+            if (newPhone === null) return;
+            const newEmail = prompt(`Actualizar Email para ${user.name}:`, user.email || "");
+            if (newEmail === null) return;
+
+            try {
+                const { error } = await supabase.from('users').update({ phone: newPhone, email: newEmail }).eq('id', userId);
+                if (error) throw error;
+                user.phone = newPhone;
+                user.email = newEmail;
+                alert("Datos de contacto actualizados.");
+                renderUsers();
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
         };
 
         window.tryRedeem = async function (userId) {
@@ -851,6 +915,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <strong>${u.name}</strong>
                         <div style="display:flex; gap:5px;">
+                            <button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#333; color:white; border:1px solid #555;" onclick="editUserContact('${u.id}')">EDITAR</button>
                             ${(u.rewards_available > 0) ? `<button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#00ff88; color:black;" onclick="tryRedeem('${u.id}')">REDIMIR (${u.rewards_available})</button>` : `<span style="color:var(--acc-green); font-size:0.7rem;">${u.rewards_available || 0} Premios</span>`}
                         </div>
                     </div>
