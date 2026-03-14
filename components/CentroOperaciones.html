@@ -247,7 +247,7 @@
 
     <!-- MODAL DE CONFIGURACIÓN DE MARCA Y REGLAS -->
     <div id="configModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: 85vh; overflow-y: auto;">
             <h3 class="alien-font">Configuración SaaS</h3>
 
             <div style="margin-top:15px; border-bottom:1px solid #333; padding-bottom:10px;">
@@ -293,16 +293,21 @@
                         <option value="LIVE">REAL (WhatsApp & Email)</option>
                     </select>
                     
-                    <div style="border: 1px solid #333; padding: 10px; border-radius: 5px; margin-bottom:10px;">
-                        <label style="font-size:0.7rem; color:var(--primary);">WhatsApp (UltraMsg)</label>
-                        <input type="text" id="configWAInstance" placeholder="Instance ID (ej: 12345)" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; margin-top:5px; margin-bottom:5px;">
-                        <input type="text" id="configWAToken" placeholder="Token de Acceso" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px;">
-                    </div>
+                    <details style="margin-top: 10px; cursor: pointer;">
+                        <summary style="font-size: 0.7rem; color: var(--primary); opacity: 0.8;">Ver configuración de llaves API</summary>
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 5px;">
+                            <div style="border: 1px solid #333; padding: 10px; border-radius: 5px; margin-bottom:10px;">
+                                <label style="font-size:0.7rem; color:var(--primary);">WhatsApp (UltraMsg)</label>
+                                <input type="text" id="configWAInstance" placeholder="Instance ID (ej: 12345)" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; margin-top:5px; margin-bottom:5px;">
+                                <input type="text" id="configWAToken" placeholder="Token de Acceso" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px;">
+                            </div>
 
-                    <div style="border: 1px solid #333; padding: 10px; border-radius: 5px;">
-                        <label style="font-size:0.7rem; color:#ff3366;">Email Marketing (Resend)</label>
-                        <input type="text" id="configResendKey" placeholder="Resend API Key (re_...)" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; margin-top:5px;">
-                    </div>
+                            <div style="border: 1px solid #333; padding: 10px; border-radius: 5px;">
+                                <label style="font-size:0.7rem; color:#ff3366;">Email Marketing (Resend)</label>
+                                <input type="text" id="configResendKey" placeholder="Resend API Key (re_...)" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; margin-top:5px;">
+                            </div>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -478,7 +483,9 @@
                 
                 // RESTORE: Show delete button for any business that isn't the fixed ones
                 const isFixed = ['REST_001', 'SPA_002', 'CUSTOM'].includes(state.currentBusinessId);
-                document.getElementById('deleteBizBtn').style.display = isFixed ? 'none' : 'block';
+                // Allow deletion of STOM specifically if user requested
+                const isStom = (state.currentBusinessId === 'STOM');
+                document.getElementById('deleteBizBtn').style.display = (isFixed && !isStom) ? 'none' : 'block';
             }
             document.getElementById('configModal').style.display = show ? 'flex' : 'none';
         };
