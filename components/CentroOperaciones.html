@@ -481,11 +481,10 @@
                 document.getElementById('configWAToken').value = messaging.whatsappToken || '';
                 document.getElementById('configResendKey').value = messaging.resendKey || '';
                 
-                // RESTORE: Show delete button for any business that isn't the fixed ones
-                const isFixed = ['REST_001', 'SPA_002', 'CUSTOM'].includes(state.currentBusinessId);
-                // Allow deletion of STOM specifically if user requested
-                const isStom = (state.currentBusinessId === 'STOM');
-                document.getElementById('deleteBizBtn').style.display = (isFixed && !isStom) ? 'none' : 'block';
+                // RESTORE: Show delete button for any business that isn't the core demo ones
+                const isCoreDemo = ['REST_001', 'SPA_002'].includes(state.currentBusinessId);
+                document.getElementById('deleteBizBtn').style.display = isCoreDemo ? 'none' : 'block';
+                document.getElementById('deleteBizBtn').style.marginTop = '15px'; // Ensure spacing
             }
             document.getElementById('configModal').style.display = show ? 'flex' : 'none';
         };
@@ -920,8 +919,9 @@
 
                 alert("Negocio eliminado correctamente.");
                 state.currentBusinessId = 'REST_001'; // Fallback to default
-                toggleModal(false);
+                await populateBusinessSelector(); // Refresh list
                 await updateBusinessContext();
+                toggleModal(false);
             } catch (err) {
                 alert("Error al eliminar: " + err.message);
             }
