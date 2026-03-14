@@ -68,5 +68,21 @@ CREATE TABLE IF NOT EXISTS redemptions (
 INSERT INTO businesses (id, name, type, currency, theme_primary, theme_bg)
 VALUES 
 ('REST_001', 'Alien Burgers', 'PRODUCT', 'COP', '#00f2ff', '#0a0a0a'),
+('REST_001', 'Alien Burgers', 'PRODUCT', 'COP', '#00f2ff', '#0a0a0a'),
 ('SPA_002', 'Zen Alien Spa', 'SERVICE', 'USD', '#bc13fe', '#050505')
 ON CONFLICT (id) DO NOTHING;
+
+-- 7. RLS Configuration (Security)
+-- For a demo/MVP, we enable public access. In production, use proper authentication.
+
+ALTER TABLE businesses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE redemptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read-write for businesses" ON businesses FOR ALL USING (true);
+CREATE POLICY "Allow public read-write for users" ON users FOR ALL USING (true);
+CREATE POLICY "Allow public read-write for products" ON products FOR ALL USING (true);
+CREATE POLICY "Allow public read-write for transactions" ON transactions FOR ALL USING (true);
+CREATE POLICY "Allow public read-write for redemptions" ON redemptions FOR ALL USING (true);

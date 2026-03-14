@@ -374,7 +374,7 @@
 
         const state = {
             currentBusinessId: 'REST_001',
-            users: JSON.parse(localStorage.getItem('saas_users')) || [],
+            users: [], // Sync from Supabase in renderUsers()
             cart: [],
             customConfig: JSON.parse(localStorage.getItem('custom_brand')) || {
                 id: 'CUSTOM',
@@ -419,6 +419,21 @@
             await renderHistory();
         };
 
+        async function testConnection() {
+            console.log("Testeando conexión con Supabase...");
+            try {
+                const { data, error } = await supabase.from('businesses').select('count', { count: 'exact', head: true });
+                if (error) {
+                    console.error("Error de conexión:", error);
+                    alert(`⚠️ Error de conexión a Supabase: ${error.message}\n\nDetalles: ${error.details || 'Sin detalles'}\nHint: ${error.hint || 'Verifica el schema.sql'}`);
+                } else {
+                    console.log("Conexión exitosa. Negocios encontrados:", data);
+                }
+            } catch (err) {
+                console.error("Error inesperado en testConnection:", err);
+            }
+        }
+
         async function renderCatalog() {
             const list = document.getElementById('catalogList');
             const catalog = await catalogService.getItems(state.currentBusinessId);
@@ -462,7 +477,7 @@
                     referrer_id: document.getElementById('refCode').value || null,
                     business_id: state.currentBusinessId
                 };
-            } else if (!user) return alert("Selecciona un usuario");
+            } else if (!user) return alert("Por favor, selecciona un usuario o ingresa el nombre de uno nuevo.");
 
             const saleDetails = {
                 items: state.cart.map(i => ({ name: i.name, price: i.price, qty: 1 })),
@@ -473,53 +488,61 @@
 
             const result = state.engine.processPurchase(user, saleDetails);
             
-            // Handle events from Engine
-            for (const event of result.events) {
-                if (event.type === 'PERSONAL_REWARD') {
-                    alert(event.message);
-                }
-                if (event.type === 'NETWORK_CONTRIBUTION') {
-                    // Actualizar al referente en DB
-                    const { data: refUser } = await supabase.from('users').select('*').eq('id', event.referrer_id).single();
-                    if (refUser) {
-                        refUser.total_accumulated = (refUser.total_accumulated || 0) + event.points;
-                        const refThreshold = event.threshold;
-                        if (refUser.total_accumulated >= refThreshold) {
-                            refUser.rewards_available = (refUser.rewards_available || 0) + 1;
-                            refUser.total_accumulated -= refThreshold;
+            try {
+                // Handle events from Engine
+                for (const event of result.events) {
+                    if (event.type === 'PERSONAL_REWARD') {
+                        alert(event.message);
+                    }
+                    if (event.type === 'NETWORK_CONTRIBUTION') {
+                        // Actualizar al referente en DB
+                        const { data: refUser } = await supabase.from('users').select('*').eq('id', event.referrer_id).single();
+                        if (refUser) {
+                            refUser.total_accumulated = (refUser.total_accumulated || 0) + event.points;
+                            const refThreshold = event.threshold;
+                            if (refUser.total_accumulated >= refThreshold) {
+                                refUser.rewards_available = (refUser.rewards_available || 0) + 1;
+                                refUser.total_accumulated -= refThreshold;
+                            }
+                            await supabase.from('users').upsert(refUser);
                         }
-                        await supabase.from('users').upsert(refUser);
                     }
                 }
+
+                // Record transaction in DB
+                await transactionService.recordTransaction({
+                    userId: user.id,
+                    businessId: state.currentBusinessId,
+                    amount: saleDetails.amount,
+                    pointsEarned: saleDetails.pointsEarned,
+                    items: saleDetails.items,
+                    totalQuantity: saleDetails.totalQuantity
+                });
+
+                // Update user state in DB
+                await supabase.from('users').upsert({
+                    id: user.id,
+                    name: user.name,
+                    business_id: user.business_id,
+                    personal_progress: user.personal_progress,
+                    total_accumulated: user.total_accumulated,
+                    rewards_available: user.rewards_available,
+                    referrer_id: user.referrer_id
+                });
+
+                state.cart = [];
+                await renderUsers();
+                await renderHistory();
+                document.getElementById('cartStatus').style.display = 'none';
+                document.getElementById('newName').value = "";
+                document.getElementById('refCode').value = "";
+                alert("Consumo registrado exitosamente.");
+            } catch (error) {
+                const msg = error.message || error.details || "Error desconocido";
+                const hint = error.hint ? `\nSugerencia: ${error.hint}` : "";
+                alert(`Error al registrar consumo: ${msg}${hint}\n\nVerifica que hayas ejecutado el schema.sql en Supabase.`);
+                console.error("Error en executeSale:", error);
             }
-
-            // Record transaction in DB
-            await transactionService.recordTransaction({
-                userId: user.id,
-                businessId: state.currentBusinessId,
-                amount: saleDetails.amount,
-                pointsEarned: saleDetails.pointsEarned,
-                items: saleDetails.items,
-                totalQuantity: saleDetails.totalQuantity
-            });
-
-            // Update user state in DB
-            await supabase.from('users').upsert({
-                id: user.id,
-                name: user.name,
-                business_id: user.business_id,
-                personal_progress: user.personal_progress,
-                total_accumulated: user.total_accumulated,
-                rewards_available: user.rewards_available,
-                referrer_id: user.referrer_id
-            });
-
-            state.cart = [];
-            await renderUsers();
-            await renderHistory();
-            document.getElementById('cartStatus').style.display = 'none';
-            document.getElementById('newName').value = "";
-            document.getElementById('refCode').value = "";
         };
 
         async function renderHistory() {
@@ -549,23 +572,36 @@
 
             if (!name || isNaN(price) || isNaN(points)) return alert("Completa todos los campos");
 
-            await catalogService.addItem(state.currentBusinessId, { name, price, points });
+            try {
+                await catalogService.addItem(state.currentBusinessId, { name, price, points });
 
-            document.getElementById('newProdName').value = "";
-            document.getElementById('newProdPrice').value = "";
-            document.getElementById('newProdPoints').value = "";
+                document.getElementById('newProdName').value = "";
+                document.getElementById('newProdPrice').value = "";
+                document.getElementById('newProdPoints').value = "";
 
-            await renderCatalogManager();
-            await renderCatalog();
+                await renderCatalogManager();
+                await renderCatalog();
+                alert("Producto añadido exitosamente.");
+            } catch (error) {
+                const msg = error.message || error.details || "Error desconocido";
+                const hint = error.hint ? `\nSugerencia: ${error.hint}` : "";
+                alert(`Error al añadir producto: ${msg}${hint}\n\nVerifica que la tabla 'products' exista.`);
+                console.error("Error en addNewProduct:", error);
+            }
         };
 
         window.removeProduct = async function (id) {
-            await catalogService.removeItem(state.currentBusinessId, id);
-            await renderCatalogManager();
-            await renderCatalog();
+            try {
+                await catalogService.removeItem(state.currentBusinessId, id);
+                await renderCatalogManager();
+                await renderCatalog();
+            } catch (error) {
+                alert("Error al eliminar producto: " + (error.message || "Verifica tu conexión a la base de datos."));
+                console.error("Error en removeProduct:", error);
+            }
         };
 
-        window.saveConfig = function() {
+        window.saveConfig = async function() {
             const newBiz = {
                 id: 'CUSTOM',
                 name: document.getElementById('configBizName').value || 'Mi Negocio Alien',
@@ -575,10 +611,32 @@
                     personal: { threshold: parseInt(document.getElementById('configThresholdPersonal').value), rewardType: 'REWARD' },
                     referral: { threshold: parseInt(document.getElementById('configThresholdReferral').value), rewardType: 'REF_REWARD' }
                 },
-                currency: 'ALIEN'
+                currency: 'ALIEN',
+                type: 'PRODUCT'
             };
             state.customConfig = newBiz;
             localStorage.setItem('custom_brand', JSON.stringify(newBiz));
+            
+            try {
+                console.log("Registrando negocio custom en Supabase...");
+                const { error } = await supabase.from('businesses').upsert({
+                    id: newBiz.id,
+                    name: newBiz.name,
+                    type: newBiz.type,
+                    currency: newBiz.currency,
+                    price_per_unit: 0,
+                    theme_primary: newBiz.primary,
+                    theme_bg: newBiz.bg,
+                    rules: newBiz.rules
+                });
+                if (error) throw error;
+                console.log("Negocio registrado exitosamente.");
+            } catch (err) {
+                console.error("Error al registrar marca:", err);
+                const msg = err.message || err.details || "Error de red o permisos";
+                alert(`Error al registrar marca en base de datos: ${msg}\n\nVerifica que la tabla 'businesses' exista.`);
+            }
+
             if (state.currentBusinessId === 'CUSTOM') updateBusinessContext();
             toggleModal(false);
         };
@@ -628,7 +686,12 @@
                 state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
         }
 
-        updateBusinessContext();
+        async function init() {
+            await testConnection();
+            await updateBusinessContext();
+        }
+
+        init();
     </script>
 </body>
 
