@@ -235,9 +235,7 @@
             <button class="config-trigger" onclick="toggleModal(true)">⚙ CONFIGURAR MARCA</button>
             <div class="business-selector">
                 <select id="activeBusiness" onchange="updateBusinessContext()">
-                    <option value="REST_001">Alien Burgers (Restaurante)</option>
-                    <option value="SPA_002">Zen Alien Spa (Servicios)</option>
-                    <option value="CUSTOM">Configuración Personalizada</option>
+                    <!-- Se carga dinámicamente -->
                 </select>
             </div>
         </div>
@@ -477,7 +475,18 @@
             const { data: businesses } = await supabase.from('businesses').select('id, name, type');
             
             if (businesses) {
-                let html = businesses.map(b => `
+                // Filtrar duplicados por ID y asegurar que tengan nombre
+                const uniqueBusinesses = [];
+                const seenIds = new Set();
+                
+                businesses.forEach(b => {
+                    if (b.name && !seenIds.has(b.id)) {
+                        uniqueBusinesses.push(b);
+                        seenIds.add(b.id);
+                    }
+                });
+
+                let html = uniqueBusinesses.map(b => `
                     <option value="${b.id}" ${b.id === state.currentBusinessId ? 'selected' : ''}>
                         ${b.name} (${b.type === 'SERVICE' ? 'Servicios' : 'Productos'})
                     </option>

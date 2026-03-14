@@ -68,7 +68,6 @@ CREATE TABLE IF NOT EXISTS redemptions (
 INSERT INTO businesses (id, name, type, currency, theme_primary, theme_bg)
 VALUES 
 ('REST_001', 'Alien Burgers', 'PRODUCT', 'COP', '#00f2ff', '#0a0a0a'),
-('REST_001', 'Alien Burgers', 'PRODUCT', 'COP', '#00f2ff', '#0a0a0a'),
 ('SPA_002', 'Zen Alien Spa', 'SERVICE', 'USD', '#bc13fe', '#050505')
 ON CONFLICT (id) DO NOTHING;
 
