@@ -453,18 +453,21 @@
                     referral: { threshold: 500, rewardType: 'NETWORK_REWARD' }
                 }
             },
+            currentBusinessConfig: null,
             engine: null
         };
 
         // UI Toggles
         window.toggleModal = (show) => {
             if (show) {
+                const biz = state.currentBusinessConfig || {};
                 // Populate modal with current values
                 document.getElementById('configBizName').value = document.getElementById('displayBizName').innerText;
                 const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
                 const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
                 document.getElementById('configPrimaryColor').value = primary.startsWith('#') ? primary : '#00f2ff';
                 document.getElementById('configBgColor').value = bg.startsWith('#') ? bg : '#050505';
+
                 // Messaging Rules
                 const rules = biz.rules || {};
                 const messaging = rules.messaging || {};
@@ -494,6 +497,7 @@
             document.getElementById('loader').style.display = 'block';
             
             let biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
+            state.currentBusinessConfig = biz;
 
             // Init Engine with real logic
             state.engine = new LoyaltyEngine(biz);
