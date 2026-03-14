@@ -223,6 +223,7 @@
 </head>
 
 <body>
+    <div id="loader" style="position:fixed; top:10px; right:50%; transform:translateX(50%); background:var(--primary); color:black; padding:5px 15px; border-radius:20px; font-size:0.7rem; font-weight:bold; display:none; z-index:10000; box-shadow:0 0 15px var(--primary);">CARGANDO DATOS...</div>
     <div class="dashboard-header">
         <div class="brand-container">
             <div id="businessLogo">A</div>
@@ -452,13 +453,15 @@
         };
 
         window.updateBusinessContext = async function () {
-            state.currentBusinessId = document.getElementById('activeBusiness').value;
-            let biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
-
-            if (!biz) {
-                console.error("Negocio no encontrado");
-                return;
+            const selector = document.getElementById('activeBusiness');
+            if (!selector.value && state.currentBusinessId) {
+                selector.value = state.currentBusinessId;
             }
+            state.currentBusinessId = selector.value || 'REST_001';
+            
+            document.getElementById('loader').style.display = 'block';
+            
+            let biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
 
             // Init Engine with real logic
             state.engine = new LoyaltyEngine(biz);
@@ -473,16 +476,22 @@
             await renderUsers();
             await renderHistory();
             await renderRedemptionHistory();
-            await populateBusinessSelector(); // Mantener sincronizada la lista
+            
+            document.getElementById('loader').style.display = 'none';
         };
 
         async function populateBusinessSelector() {
             const select = document.getElementById('activeBusiness');
             const { data: businesses } = await supabase.from('businesses').select('id, name, type');
             
-            if (businesses) {
-                // Mostramos todos para que el usuario pueda identificar y borrar duplicados
-                // pero agregamos el final del ID para diferenciarlos
+            if (businesses && businesses.length > 0) {
+                // Si no hay nada seleccionado, tomamos el primero
+                if (!state.currentBusinessId || state.currentBusinessId === 'REST_001') {
+                     // Solo cambiamos si el actual no existe o es el default pero hay más opciones
+                     const exists = businesses.find(b => b.id === state.currentBusinessId);
+                     if (!exists) state.currentBusinessId = businesses[0].id;
+                }
+
                 let html = businesses.map(b => `
                     <option value="${b.id}" ${b.id === state.currentBusinessId ? 'selected' : ''}>
                         ${b.name} [ID: ${b.id.slice(-4)}] (${b.type === 'SERVICE' ? 'Servicios' : 'Productos'})
@@ -490,11 +499,8 @@
                 `).join('');
                 html += `<option value="CUSTOM" ${state.currentBusinessId === 'CUSTOM' ? 'selected' : ''}>Configuración Personalizada</option>`;
                 
-                const currentValue = select.value;
                 select.innerHTML = html;
-                if (currentValue && html.includes(currentValue)) {
-                    select.value = currentValue;
-                }
+                select.value = state.currentBusinessId;
             }
         }
 
@@ -1033,7 +1039,8 @@
 
         async function init() {
             await testConnection();
-            await updateBusinessContext();
+            await populateBusinessSelector(); // 1. Populate first
+            await updateBusinessContext();    // 2. Load data for the selected one
             renderNotifications();
         }
 
