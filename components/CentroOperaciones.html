@@ -367,8 +367,13 @@
         <!-- DERECHA: RED Y PUNTOS -->
         <div class="panel">
             <h3 class="alien-font">Red y Conexiones</h3>
-            <div id="networkStatus" class="network-tree">
+            <div id="networkStatus" class="network-tree" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
                 <!-- Estado de la red de referidos -->
+            </div>
+
+            <h3 class="alien-font" style="margin-top:20px; font-size:0.9rem;">🔔 Notificaciones (Simulador)</h3>
+            <div id="notificationLogs" style="font-size: 0.7rem; max-height: 300px; overflow-y: auto;">
+                <!-- Historial de notificaciones enviadas -->
             </div>
         </div>
     </div>
@@ -404,6 +409,7 @@
         import { catalogService } from '../logic/catalogService.js';
         import { transactionService } from '../logic/transactionService.js';
         import LoyaltyEngine from '../logic/compensationEngine.js';
+        import { notificationService } from '../logic/notificationService.js';
 
         const state = {
             currentBusinessId: 'REST_001',
@@ -579,6 +585,9 @@
                     referrer_id: resolvedReferrerId,
                     business_id: state.currentBusinessId
                 };
+                
+                // NOTIFICACIÓN: BIENVENIDA
+                notificationService.send('WELCOME', user, { businessName: document.getElementById('displayBizName').innerText });
             } else if (!user) return alert("Por favor, selecciona un usuario o ingresa el nombre de uno nuevo.");
 
             const saleDetails = {
@@ -595,11 +604,13 @@
                 for (const event of result.events) {
                     if (event.type === 'PERSONAL_REWARD') {
                         alert(event.message);
+                        notificationService.send('REWARD', user, { businessName: document.getElementById('displayBizName').innerText });
                     }
                     if (event.type === 'NETWORK_CONTRIBUTION') {
                         // Actualizar al referente en DB
                         const { data: refUser } = await supabase.from('users').select('*').eq('id', event.referrer_id).single();
                         if (refUser) {
+                            notificationService.send('NETWORK', refUser, { businessName: document.getElementById('displayBizName').innerText });
                             refUser.total_accumulated = (refUser.total_accumulated || 0) + event.points;
                             const refThreshold = event.threshold;
                             if (refUser.total_accumulated >= refThreshold) {
@@ -645,6 +656,7 @@
                 document.getElementById('newEmail').value = "";
                 document.getElementById('refCode').value = "";
                 alert("Consumo registrado exitosamente.");
+                renderNotifications();
             } catch (error) {
                 const msg = error.message || error.details || "Error desconocido";
                 const hint = error.hint ? `\nSugerencia: ${error.hint}` : "";
@@ -906,9 +918,31 @@
                 roots.map(root => buildTreeHTML(root)).join('');
         }
 
+        function renderNotifications() {
+            const container = document.getElementById('notificationLogs');
+            const logs = notificationService.getLogs();
+
+            if (logs.length === 0) {
+                container.innerHTML = "<p style='opacity:0.5;'>No hay mensajes enviados.</p>";
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div style="padding:10px; border-bottom:1px solid #222; margin-bottom:10px; background:rgba(0,242,255,0.02); border-radius:5px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span style="color:var(--primary); font-weight:bold;">${log.type}</span>
+                        <span style="opacity:0.5; font-size:0.6rem;">${new Date(log.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <div style="margin-bottom:5px;"><strong>Para:</strong> ${log.recipientName} (${log.recipientContact})</div>
+                    <div style="font-size:0.65rem; opacity:0.8; line-height:1.2;">${log.message}</div>
+                </div>
+            `).join('');
+        }
+
         async function init() {
             await testConnection();
             await updateBusinessContext();
+            renderNotifications();
         }
 
         init();
