@@ -284,6 +284,28 @@
                     gratis.</small>
             </div>
 
+            <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+                <label style="font-size:0.8rem; opacity:0.6;">MENSAJERÍA INTEGRADA (WhatsApp & Email)</label>
+                <div style="margin-top:5px;">
+                    <label style="font-size:0.7rem;">Modo de Mensajería</label>
+                    <select id="configMsgMode" style="width:100%; padding:8px; background:#222; border:1px solid #444; color:white; border-radius:5px; margin-bottom:10px;">
+                        <option value="SIM">SIMULACIÓN (Solo Log)</option>
+                        <option value="LIVE">REAL (WhatsApp & Email)</option>
+                    </select>
+                    
+                    <div style="border: 1px solid #333; padding: 10px; border-radius: 5px; margin-bottom:10px;">
+                        <label style="font-size:0.7rem; color:var(--primary);">WhatsApp (UltraMsg)</label>
+                        <input type="text" id="configWAInstance" placeholder="Instance ID (ej: 12345)" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; margin-top:5px; margin-bottom:5px;">
+                        <input type="text" id="configWAToken" placeholder="Token de Acceso" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px;">
+                    </div>
+
+                    <div style="border: 1px solid #333; padding: 10px; border-radius: 5px;">
+                        <label style="font-size:0.7rem; color:#ff3366;">Email Marketing (Resend)</label>
+                        <input type="text" id="configResendKey" placeholder="Resend API Key (re_...)" style="width:100%; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; margin-top:5px;">
+                    </div>
+                </div>
+            </div>
+
             <button class="btn-action" style="margin-top:20px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
             <button id="deleteBizBtn" class="btn-action" style="background:#ff4444; color:white; margin-top:5px; display:none;"
                 onclick="deleteBusiness()">ELIMINAR ESTE NEGOCIO</button>
@@ -443,6 +465,13 @@
                 const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
                 document.getElementById('configPrimaryColor').value = primary.startsWith('#') ? primary : '#00f2ff';
                 document.getElementById('configBgColor').value = bg.startsWith('#') ? bg : '#050505';
+                // Messaging Rules
+                const rules = biz.rules || {};
+                const messaging = rules.messaging || {};
+                document.getElementById('configMsgMode').value = messaging.mode || 'SIM';
+                document.getElementById('configWAInstance').value = messaging.whatsappInstance || '';
+                document.getElementById('configWAToken').value = messaging.whatsappToken || '';
+                document.getElementById('configResendKey').value = messaging.resendKey || '';
                 
                 // RESTORE: Show delete button for any business that isn't the fixed ones
                 const isFixed = ['REST_001', 'SPA_002', 'CUSTOM'].includes(state.currentBusinessId);
@@ -647,9 +676,10 @@
                     referrer_id: resolvedReferrerId,
                     business_id: state.currentBusinessId
                 };
+                const bizConfig = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
                 
                 // NOTIFICACIÓN: BIENVENIDA
-                notificationService.send('WELCOME', user, { businessName: document.getElementById('displayBizName').innerText });
+                notificationService.send('WELCOME', user, { businessName: document.getElementById('displayBizName').innerText }, bizConfig.rules || {});
             } else if (!user) return alert("Por favor, selecciona un usuario o ingresa el nombre de uno nuevo.");
 
             const saleDetails = {
@@ -659,6 +689,7 @@
                 totalQuantity: state.cart.length
             };
 
+            const bizConfig = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
             const result = state.engine.processPurchase(user, saleDetails);
             
             try {
@@ -666,13 +697,13 @@
                 for (const event of result.events) {
                     if (event.type === 'PERSONAL_REWARD') {
                         alert(event.message);
-                        notificationService.send('REWARD', user, { businessName: document.getElementById('displayBizName').innerText });
+                        notificationService.send('REWARD', user, { businessName: document.getElementById('displayBizName').innerText }, bizConfig.rules || {});
                     }
                     if (event.type === 'NETWORK_CONTRIBUTION') {
                         // Actualizar al referente en DB
                         const { data: refUser } = await supabase.from('users').select('*').eq('id', event.referrer_id).single();
                         if (refUser) {
-                            notificationService.send('NETWORK', refUser, { businessName: document.getElementById('displayBizName').innerText });
+                            notificationService.send('NETWORK', refUser, { businessName: document.getElementById('displayBizName').innerText }, bizConfig.rules || {});
                             refUser.total_accumulated = (refUser.total_accumulated || 0) + event.points;
                             const refThreshold = event.threshold;
                             if (refUser.total_accumulated >= refThreshold) {
@@ -793,7 +824,13 @@
                 bg: document.getElementById('configBgColor').value,
                 rules: {
                     personal: { threshold: parseInt(document.getElementById('configThresholdPersonal').value), rewardType: 'REWARD' },
-                    referral: { threshold: parseInt(document.getElementById('configThresholdReferral').value), rewardType: 'REF_REWARD' }
+                    referral: { threshold: parseInt(document.getElementById('configThresholdReferral').value), rewardType: 'REF_REWARD' },
+                    messaging: {
+                        mode: document.getElementById('configMsgMode').value,
+                        whatsappInstance: document.getElementById('configWAInstance').value,
+                        whatsappToken: document.getElementById('configWAToken').value,
+                        resendKey: document.getElementById('configResendKey').value
+                    }
                 },
                 currency: 'COP',
                 type: 'PRODUCT'
