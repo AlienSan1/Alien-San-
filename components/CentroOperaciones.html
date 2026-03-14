@@ -980,18 +980,28 @@
                 }
             }
 
-            redeemReward(user.id, user.rewards_available);
+            let quantity = 1;
+            if (user.rewards_available > 1) {
+                const input = prompt(`El cliente tiene ${user.rewards_available} premios disponibles.\n\n¿Cuántos desea reclamar?`, "1");
+                if (input === null) return;
+                quantity = parseInt(input);
+                if (isNaN(quantity) || quantity <= 0 || quantity > user.rewards_available) {
+                    return alert(`Cantidad inválida. Por favor ingresa un número entre 1 y ${user.rewards_available}.`);
+                }
+            }
+
+            redeemReward(user.id, user.rewards_available, quantity);
         };
 
-        window.redeemReward = async function(userId, currentRewards) {
-            if (currentRewards <= 0) return;
-            if (!confirm(`¿Confirmas que el cliente va a redimir 1 premio ahora? Se descontará de su saldo.`)) return;
+        window.redeemReward = async function(userId, currentRewards, quantity = 1) {
+            if (currentRewards < quantity) return;
+            if (!confirm(`¿Confirmas que el cliente va a redimir ${quantity} premio(s) ahora? Se descontarán de su saldo.`)) return;
 
             try {
-                // 1. Descontar premio en Supabase
+                // 1. Descontar premios en Supabase
                 const { error: updateError } = await supabase
                     .from('users')
-                    .update({ rewards_available: currentRewards - 1 })
+                    .update({ rewards_available: currentRewards - quantity })
                     .eq('id', userId);
                 
                 if (updateError) throw updateError;
@@ -1000,11 +1010,12 @@
                 await transactionService.recordRedemption({
                     userId: userId,
                     businessId: state.currentBusinessId,
-                    rewardType: 'REWARD_CLAIMED',
-                    pointsSpent: 0
+                    rewardType: `REWARD_CLAIMED_${quantity}`,
+                    pointsSpent: 0,
+                    metadata: { quantity: quantity }
                 });
 
-                alert("¡Premio redimido exitosamente!");
+                alert(quantity > 1 ? `¡${quantity} premios redimidos exitosamente!` : "¡Premio redimido exitosamente!");
                 await renderUsers();
                 await renderRedemptionHistory();
             } catch (err) {
