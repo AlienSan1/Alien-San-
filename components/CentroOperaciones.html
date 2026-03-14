@@ -134,6 +134,20 @@
             margin-bottom: 5px;
             background: rgba(255, 255, 255, 0.02);
             border-radius: 5px;
+            border-left: 2px solid var(--primary);
+            position: relative;
+        }
+
+        .network-child {
+            margin-left: 20px;
+            border-left: 1px dashed rgba(255, 255, 255, 0.2);
+            padding-left: 10px;
+        }
+
+        .network-node::before {
+            content: '👽';
+            margin-right: 8px;
+            font-size: 0.8rem;
         }
 
         .btn-action {
@@ -390,7 +404,17 @@
         };
 
         // UI Toggles
-        window.toggleModal = (show) => document.getElementById('configModal').style.display = show ? 'flex' : 'none';
+        window.toggleModal = (show) => {
+            if (show) {
+                // Populate modal with current values
+                document.getElementById('configBizName').value = document.getElementById('displayBizName').innerText;
+                const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+                const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
+                document.getElementById('configPrimaryColor').value = primary.startsWith('#') ? primary : '#00f2ff';
+                document.getElementById('configBgColor').value = bg.startsWith('#') ? bg : '#050505';
+            }
+            document.getElementById('configModal').style.display = show ? 'flex' : 'none';
+        };
         window.toggleCatalogManager = (show) => {
             if (show) renderCatalogManager();
             document.getElementById('catalogModal').style.display = show ? 'flex' : 'none';
@@ -467,6 +491,31 @@
             let user = selectorValue ? state.users.find(u => u.id === selectorValue) : null;
             
             if (!user && nameInput) {
+                const refCodeInput = document.getElementById('refCode').value;
+                let resolvedReferrerId = null;
+
+                if (refCodeInput) {
+                    console.log("Resolviendo referente:", refCodeInput);
+                    // Search by ID or Name
+                    const { data: refUsers } = await supabase
+                        .from('users')
+                        .select('id, name')
+                        .or(`id.eq."${refCodeInput}",name.eq."${refCodeInput}"`)
+                        .eq('business_id', state.currentBusinessId);
+                    
+                    if (refUsers && refUsers.length > 0) {
+                        resolvedReferrerId = refUsers[0].id;
+                        console.log("Referente resuelto:", resolvedReferrerId);
+                    } else {
+                        console.warn("No se encontró el referente:", refCodeInput);
+                        if (confirm(`No encontramos al "Alien" referente "${refCodeInput}". ¿Deseas continuar sin código de referido?`)) {
+                            resolvedReferrerId = null;
+                        } else {
+                            return;
+                        }
+                    }
+                }
+
                 user = {
                     id: 'ALN-' + Math.random().toString(36).substr(2, 5).toUpperCase(),
                     name: nameInput,
@@ -474,7 +523,7 @@
                     personal_progress: 0,
                     total_accumulated: 0,
                     rewards_available: 0,
-                    referrer_id: document.getElementById('refCode').value || null,
+                    referrer_id: resolvedReferrerId,
                     business_id: state.currentBusinessId
                 };
             } else if (!user) return alert("Por favor, selecciona un usuario o ingresa el nombre de uno nuevo.");
@@ -605,7 +654,7 @@
 
         window.saveConfig = async function() {
             const newBiz = {
-                id: 'CUSTOM',
+                id: state.currentBusinessId === 'CUSTOM' ? 'CUSTOM' : state.currentBusinessId,
                 name: document.getElementById('configBizName').value || 'Mi Negocio Alien',
                 primary: document.getElementById('configPrimaryColor').value,
                 bg: document.getElementById('configBgColor').value,
@@ -613,14 +662,17 @@
                     personal: { threshold: parseInt(document.getElementById('configThresholdPersonal').value), rewardType: 'REWARD' },
                     referral: { threshold: parseInt(document.getElementById('configThresholdReferral').value), rewardType: 'REF_REWARD' }
                 },
-                currency: 'ALIEN',
+                currency: 'COP',
                 type: 'PRODUCT'
             };
-            state.customConfig = newBiz;
-            localStorage.setItem('custom_brand', JSON.stringify(newBiz));
+            
+            if (state.currentBusinessId === 'CUSTOM') {
+                state.customConfig = newBiz;
+                localStorage.setItem('custom_brand', JSON.stringify(newBiz));
+            }
             
             try {
-                console.log("Registrando negocio custom en Supabase...");
+                console.log(`Actualizando negocio ${newBiz.id} en Supabase...`);
                 const { error } = await supabase.from('businesses').upsert({
                     id: newBiz.id,
                     name: newBiz.name,
@@ -632,7 +684,9 @@
                     rules: newBiz.rules
                 });
                 if (error) throw error;
-                console.log("Negocio registrado exitosamente.");
+                console.log("Configuración guardada exitosamente.");
+                alert("Configuración de marca actualizada.");
+                updateBusinessContext();
             } catch (err) {
                 console.error("Error al registrar marca:", err);
                 const msg = err.message || err.details || "Error de red o permisos";
@@ -686,6 +740,47 @@
 
             select.innerHTML = '<option value="">-- Nuevo Cliente --</option>' +
                 state.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+            
+            renderNetworkTree();
+        }
+
+        async function renderNetworkTree() {
+            const container = document.getElementById('networkStatus');
+            if (state.users.length === 0) {
+                container.innerHTML = "<p style='opacity:0.5; font-size:0.8rem;'>No hay conexiones activas en este negocio.</p>";
+                return;
+            }
+
+            // Build map of users
+            const userMap = {};
+            state.users.forEach(u => {
+                userMap[u.id] = { ...u, children: [] };
+            });
+
+            const roots = [];
+            state.users.forEach(u => {
+                if (u.referrer_id && userMap[u.referrer_id]) {
+                    userMap[u.referrer_id].children.push(userMap[u.id]);
+                } else {
+                    roots.push(userMap[u.id]);
+                }
+            });
+
+            function buildTreeHTML(node) {
+                let html = `<div class="network-node">
+                    <strong>${node.name}</strong> <span style="font-size:0.6rem; opacity:0.5;">[${node.id}]</span>
+                </div>`;
+                
+                if (node.children.length > 0) {
+                    html += `<div class="network-child">
+                        ${node.children.map(child => buildTreeHTML(child)).join('')}
+                    </div>`;
+                }
+                return html;
+            }
+
+            container.innerHTML = `<h4 style="font-size:0.8rem; margin-bottom:15px; opacity:0.7;">MAPA DE DUPLICACIÓN</h4>` + 
+                roots.map(root => buildTreeHTML(root)).join('');
         }
 
         async function init() {
