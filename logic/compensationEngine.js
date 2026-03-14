@@ -29,7 +29,11 @@ export default class LoyaltyEngine {
     processPurchase(customer, saleDetails) {
         let events = [];
         const quantity = saleDetails.quantity || 1;
-        const pointsEarned = saleDetails.pointsEarned || quantity;
+        
+        // 0. Gamification: Tier Multiplier
+        const tierInfo = this.getTierInfo(customer.total_accumulated || 0);
+        const basePoints = saleDetails.pointsEarned || quantity;
+        const pointsEarned = Math.round(basePoints * tierInfo.multiplier);
 
         // 1. Update personal tracking
         customer.personal_progress = (customer.personal_progress || 0) + pointsEarned;
@@ -64,8 +68,24 @@ export default class LoyaltyEngine {
 
         return {
             customer: customer,
-            events: events
+            events: events,
+            earned: pointsEarned,
+            tier: tierInfo.name,
+            bonus: Math.round(basePoints * (tierInfo.multiplier - 1))
         };
+    }
+
+    /**
+     * Classified user based on total historical points
+     */
+    getTierInfo(totalPoints) {
+        if (totalPoints > 500) {
+            return { name: 'LEYENDA DE LA NEBULOSA', multiplier: 1.2, color: '#bc13fe', next: null };
+        } else if (totalPoints > 100) {
+            return { name: 'COMANDANTE GALÁCTICO', multiplier: 1.1, color: '#00f2ff', nextThreshold: 500 };
+        } else {
+            return { name: 'NOVATO ESTELAR', multiplier: 1.0, color: '#00ff88', nextThreshold: 100 };
+        }
     }
 
     /**

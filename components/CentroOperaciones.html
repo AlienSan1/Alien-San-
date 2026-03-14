@@ -704,7 +704,7 @@
                     userId: user.id,
                     businessId: state.currentBusinessId,
                     amount: saleDetails.amount,
-                    pointsEarned: saleDetails.pointsEarned,
+                    pointsEarned: result.earned,
                     items: saleDetails.items,
                     totalQuantity: saleDetails.totalQuantity
                 });
@@ -717,7 +717,9 @@
                 document.getElementById('newPhone').value = "";
                 document.getElementById('newEmail').value = "";
                 document.getElementById('refCode').value = "";
-                alert("Consumo registrado exitosamente.");
+                
+                const bonusMsg = result.bonus > 0 ? ` (+${result.bonus} pts de bono nivel ${result.tier})` : "";
+                alert(`Consumo registrado exitosamente.${bonusMsg}`);
                 renderNotifications();
             } catch (error) {
                 const msg = error.message || error.details || "Error desconocido";

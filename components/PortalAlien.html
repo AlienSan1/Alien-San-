@@ -6,10 +6,62 @@
     <title>Portal del Alien | Tu Magia</title>
     <link rel="stylesheet" href="../styles/index.css">
     <style>
-        .progress-container {
-            background: #222;
+        :root {
+            --primary: #00f2ff;
+            --secondary: #bc13fe;
+            --bg: #050a05;
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background: var(--bg);
+            color: white;
+            padding-bottom: 50px;
+        }
+
+        .portal-container {
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .id-card {
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.1), rgba(188, 19, 254, 0.1));
+            border: 1px solid rgba(0, 242, 255, 0.2);
             border-radius: 20px;
-            height: 15px;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .id-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .qr-container {
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,242,255,0.3);
+        }
+
+        .progress-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            height: 10px;
             width: 100%;
             margin: 10px 0;
             overflow: hidden;
@@ -17,86 +69,127 @@
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, var(--acc-blue), var(--acc-green));
+            background: var(--primary);
             width: 0%;
-            transition: width 0.5s ease;
+            transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .history-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .reward-badge {
-            background: var(--acc-green);
-            color: black;
-            padding: 5px 15px;
-            border-radius: 20px;
+            background: var(--secondary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
             font-weight: bold;
-            font-size: 0.8rem;
+        }
+
+        .alien-font {
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
     </style>
+    <!-- Import Simple QR Code Logic via CDN for reliability, fallback to text if fail -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body style="padding: 20px; background: #050505;">
 
-    <div style="max-width: 500px; margin: 0 auto;">
-        <div style="text-align: center; margin-bottom: 30px;">
-            <h1 class="alien-font" style="color: var(--acc-blue);">PORTAL DEL ALIEN</h1>
-            <p id="welcomeMsg" style="color: #888;">Ingresa tu código para ver tu progreso</p>
+    <div class="portal-container">
+        <!-- LOGIN SECTION -->
+        <div id="loginSection" style="text-align: center; padding-top: 50px;">
+            <div style="width: 80px; height: 80px; background: var(--primary); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 0 20px var(--primary);">
+                <span style="font-size: 2.5rem;">👽</span>
+            </div>
+            <h1 class="alien-font" style="font-size: 1.5rem; margin-bottom: 5px;">Bienvenido, Alien</h1>
+            <p style="opacity: 0.5; font-size: 0.9rem;">Ingresa tu código de identidad estelar</p>
 
-            <input type="text" id="loginId" placeholder="ALN-001"
-                style="width: 150px; text-align: center; margin-top: 10px;">
-            <button class="btn" onclick="login()">ENTRAR</button>
+            <div style="margin-top:30px;">
+                <input type="text" id="loginId" placeholder="Ej: ALN-XYZ" 
+                    style="width: 200px; padding: 15px; background: #111; border: 1px solid #333; color: white; border-radius: 10px; text-align: center; font-size: 1.1rem; margin-bottom: 15px;">
+                <br>
+                <button class="btn" style="width: 232px; padding: 15px;" onclick="login()">ACCESO GALÁCTICO</button>
+            </div>
         </div>
 
-        <div id="dashboard" style="display: none;">
-            <!-- Mi Fidelidad Personal -->
-            <div class="card" style="margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 class="alien-font">PRÓXIMO ALMUERZO</h3>
-                    <span id="personalCounter" style="color: var(--acc-blue);">0/10</span>
+        <!-- DASHBOARD SECTION -->
+        <div id="dashboard" style="display: none; animation: fadeIn 0.5s ease;">
+            <!-- ID CARD -->
+            <div class="id-card">
+                <div style="font-size: 0.6rem; opacity: 0.6; text-transform: uppercase;">Membresía Oficial Alien</div>
+                <h2 id="userNameDisplay" class="alien-font" style="margin: 10px 0; color: var(--primary);">---</h2>
+                
+                <div class="qr-container">
+                    <div id="qrcode"></div>
                 </div>
-                <div class="progress-container">
-                    <div id="personalBar" class="progress-bar"></div>
-                </div>
-                <p style="font-size: 0.8rem; color: #555;">¡Completa 10 consumos y el siguiente es por nuestra cuenta!
-                </p>
-            </div>
 
-            <!-- Mi Red / Tier 2 -->
-            <div class="card" style="margin-bottom: 20px; border-color: var(--acc-green);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3 class="alien-font">MI RED (DUPLICACIÓN)</h3>
-                    <span id="teamCounter" style="color: var(--acc-green);">0/25</span>
-                </div>
-                <div class="progress-container">
-                    <div id="teamBar" class="progress-bar" style="filter: hue-rotate(90deg);"></div>
-                </div>
-                <p style="font-size: 0.8rem; color: #555;">Ganas 1 plato gratis por cada 25 consumos de tus
-                    recomendados.</p>
-            </div>
-
-            <!-- Mis Premios -->
-            <div class="card" style="text-align: center;">
-                <h3 class="alien-font">PREMIOS PARA REDIMIR</h3>
-                <div id="rewardCount" class="metric">0</div>
-                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-                    <span class="reward-badge">PLATOS ACUMULADOS</span>
-                    <button id="redeemBtn" class="btn" style="display:none; width: 100%;" onclick="redeemReward()">REDIMIR AHORA</button>
+                <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+                    <div>
+                        <div style="font-size: 0.6rem; opacity: 0.5;">CÓDIGO ID</div>
+                        <div id="userCodeDisplay" style="font-weight: bold; font-family: monospace;">---</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.6rem; opacity: 0.5;">NIVEL</div>
+                        <div id="userTierDisplay" style="font-weight: bold; color: var(--secondary);">NOVATO ESTELAR</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Historial de Compras -->
-            <div class="card" style="margin-top:20px;">
-                <h3 class="alien-font">MIS COMPRAS</h3>
-                <div id="userHistory" style="font-size: 0.8rem; margin-top:10px;">
-                    <!-- Historial dinámico -->
+            <!-- METRICS GRID -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 25px;">
+                <!-- Personal Progress -->
+                <div class="card" style="padding: 20px; background: rgba(0, 242, 255, 0.05);">
+                    <div style="display:flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; font-weight: bold;">MIS CONSUMOS</span>
+                        <span id="personalCounter" style="color: var(--primary); font-weight: bold;">0/0</span>
+                    </div>
+                    <div class="progress-container">
+                        <div id="personalBar" class="progress-bar"></div>
+                    </div>
+                    <div id="rewardAlert" style="display:none; margin-top: 10px; background: var(--secondary); color: white; padding: 10px; border-radius: 8px; text-align: center; font-size: 0.8rem; font-weight: bold;">
+                        🎁 ¡TIENES PREMIOS LISTOS!
+                    </div>
+                </div>
+
+                <!-- Rewards Available -->
+                <div class="card" style="text-align: center; padding: 20px; border: 1px solid var(--secondary); background: rgba(188, 19, 254, 0.05);">
+                    <div style="font-size: 0.7rem; opacity: 0.7;">RECOMPENSAS DISPONIBLES</div>
+                    <div id="rewardCount" style="font-size: 2.5rem; font-weight: bold; margin: 10px 0;">0</div>
+                    <button id="redeemBtn" class="btn" style="width: 100%; background: var(--secondary);" onclick="redeemReward()">RECLAMAR RECOMPENSA</button>
+                    <p style="font-size: 0.6rem; opacity: 0.5; margin-top: 10px;">Presiona solo frente al personal del negocio</p>
+                </div>
+
+                <!-- Evolution Tier Progress -->
+                <div class="card" style="padding: 20px; background: rgba(188, 19, 254, 0.05); border: 1px dashed rgba(188, 19, 254, 0.3);">
+                    <div style="display:flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; font-weight: bold;">EVOLUCIÓN ALIEN</span>
+                        <span id="tierPoints" style="color: var(--secondary); font-weight: bold;">0/100 Pts</span>
+                    </div>
+                    <div class="progress-container">
+                        <div id="tierBar" class="progress-bar" style="background: var(--secondary); box-shadow: 0 0 10px var(--secondary);"></div>
+                    </div>
+                    <p id="tierPerks" style="font-size: 0.7rem; opacity: 0.7; margin-top: 8px;">Próximo nivel: +10% de bono en puntos.</p>
                 </div>
             </div>
 
-            <!-- Mi Link de Invitación -->
-            <div class="card" style="margin-top: 20px; background: rgba(0,242,255,0.05);">
-                <h4 class="alien-font" style="font-size: 0.8rem;">TU CÓDIGO DE RECOMENDACIÓN</h4>
-                <div id="myCode"
-                    style="font-size: 1.2rem; font-weight: bold; color: var(--acc-blue); margin: 10px 0; border: 1px dashed var(--acc-blue); padding: 10px; border-radius: 5px;">
-                    ---</div>
-                <p style="font-size: 0.7rem; color: #888;">Compártelo para hacer crecer tu red y ganar más premios.</p>
+            <!-- History -->
+            <div style="margin-top: 30px;">
+                <h3 class="alien-font" style="font-size: 0.9rem; margin-bottom: 15px; opacity: 0.7;">HISTORIAL DE ACTIVIDAD</h3>
+                <div id="userHistory">
+                    <!-- Dinámico -->
+                </div>
             </div>
         </div>
     </div>
@@ -104,6 +197,7 @@
     <script type="module">
         import { supabase } from '../logic/supabaseClient.js';
         import { transactionService } from '../logic/transactionService.js';
+        import LoyaltyEngine from '../logic/compensationEngine.js';
 
         const state = {
             currentUser: null
@@ -119,32 +213,58 @@
                 .single();
 
             if (error || !u) {
-                alert("Código no encontrado o error de conexión.");
+                alert("Código de Alien no encontrado. Verifica tu código en tu ticket o mensaje de bienvenida.");
                 return;
             }
 
             state.currentUser = u;
 
-            // Mostrar Dashboard
+            // UI Transitions
+            document.getElementById('loginSection').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
-            document.getElementById('welcomeMsg').innerText = `Hola, ${u.name}`;
+            document.getElementById('userNameDisplay').innerText = u.name;
+            document.getElementById('userCodeDisplay').innerText = u.id;
 
-            // Actualizar Métricas
+            // Generate QR Code
+            document.getElementById('qrcode').innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), {
+                text: u.id,
+                width: 150,
+                height: 150,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            // Update Metrics
             const biz = u.businesses;
-            const threshold = biz?.rules?.personal?.threshold || 10;
+            const engine = new LoyaltyEngine(biz || {});
+            const threshold = biz?.personal_threshold || 10;
             const progress = u.personal_progress || 0;
+            const totalPoints = u.total_accumulated || 0;
+
+            // Tier Info
+            const tierInfo = engine.getTierInfo(totalPoints);
+            document.getElementById('userTierDisplay').innerText = tierInfo.name;
+            document.getElementById('userTierDisplay').style.color = tierInfo.color;
             
+            if (tierInfo.nextThreshold) {
+                document.getElementById('tierPoints').innerText = `${Math.round(totalPoints)}/${tierInfo.nextThreshold} Pts`;
+                document.getElementById('tierBar').style.width = `${Math.min(100, (totalPoints / tierInfo.nextThreshold) * 100)}%`;
+                const bonusNext = tierInfo.multiplier === 1.0 ? 10 : 20;
+                document.getElementById('tierPerks').innerText = `Próximo nivel: +${bonusNext}% de bono en puntos.`;
+            } else {
+                document.getElementById('tierPoints').innerText = `${Math.round(totalPoints)} Pts (MAX)`;
+                document.getElementById('tierBar').style.width = `100%`;
+                document.getElementById('tierPerks').innerText = `¡Eres una Leyenda! Tienes +20% de bono permanente.`;
+            }
+
             document.getElementById('personalCounter').innerText = `${progress}/${threshold}`;
             document.getElementById('personalBar').style.width = `${Math.min(100, (progress / threshold) * 100)}%`;
-
-            // Para la red (Derrame / Tier 2)
-            const teamThreshold = biz?.rules?.referral?.threshold || 25;
-            document.getElementById('teamCounter').innerText = `${u.total_accumulated || 0}/${teamThreshold}`;
-            document.getElementById('teamBar').style.width = `${Math.min(100, ((u.total_accumulated || 0) / teamThreshold) * 100)}%`;
+            document.getElementById('rewardAlert').style.display = u.rewards_available > 0 ? 'block' : 'none';
 
             document.getElementById('rewardCount').innerText = u.rewards_available || 0;
             document.getElementById('redeemBtn').style.display = u.rewards_available > 0 ? 'block' : 'none';
-            document.getElementById('myCode').innerText = u.id;
 
             await renderUserHistory(u.id);
         }
@@ -159,13 +279,14 @@
             }
 
             list.innerHTML = history.map(tx => `
-                <div style="padding:10px; border-bottom:1px solid #222; margin-bottom:5px; background:rgba(255,255,255,0.02); border-radius:5px;">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                        <span>Compra #${tx.id.substr(0,5)}</span>
-                        <span style="color:var(--acc-blue)">$${tx.amount}</span>
+                <div class="history-item">
+                    <div>
+                        <div style="font-weight:bold;">${tx.type === 'REWARD' ? '🎁 PREMIO' : '🛸 CONSUMO'}</div>
+                        <div style="font-size:0.6rem; opacity:0.5;">${new Date(tx.created_at).toLocaleDateString()}</div>
                     </div>
-                    <div style="font-size:0.7rem; color:#666;">
-                        ${new Date(tx.created_at).toLocaleString()}
+                    <div style="text-align:right;">
+                        <div style="color:var(--primary); font-family: monospace;">$${tx.amount}</div>
+                        ${tx.points_personal > 0 ? `<div style="font-size:0.6rem; color:#00ff88;">+${tx.points_personal} Pts</div>` : ''}
                     </div>
                 </div>
             `).join('');
