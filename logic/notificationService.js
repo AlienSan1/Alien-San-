@@ -16,21 +16,25 @@ export const notificationService = {
     async send(type, recipient, context, config = {}) {
         const timestamp = new Date().toISOString();
         const mode = config.messaging?.mode || 'SIM';
+        const templates = config.messaging?.templates || {};
         let message = '';
 
-        switch (type) {
-            case 'WELCOME':
-                message = `¡Hola ${recipient.name}! 🛸 Bienvenido a ${context.businessName}. Ya puedes sumar puntos para ganar premios. ¡Tu viaje galáctico comienza hoy!`;
-                break;
-            case 'REWARD':
-                message = `¡Felicidades ${recipient.name}! 🏆 Has alcanzado tu meta en ${context.businessName}. Tienes un PREMIO disponible. ¡Pasa pronto por él!`;
-                break;
-            case 'NETWORK':
-                message = `¡Tu Red Alien ha crecido, ${recipient.name}! 🚀 Has ganado puntos extra por tu referido en ${context.businessName}.`;
-                break;
-            default:
-                message = `Hola ${recipient.name}, tienes noticias en ${context.businessName}.`;
-        }
+        // Default templates
+        const defaultTemplates = {
+            WELCOME: `¡Hola {cliente}! 🛸 Bienvenido a {negocio}. Ya puedes sumar puntos para ganar premios. ¡Tu viaje galáctico comienza hoy!`,
+            REWARD: `¡Felicidades {cliente}! 🏆 Has alcanzado tu meta en {negocio}. Tienes un PREMIO disponible. ¡Pasa pronto por él!`,
+            NETWORK: `¡Tu Red Alien ha crecido, {cliente}! 🚀 Has ganado puntos extra por tu referido en {negocio}.`,
+            DEFAULT: `Hola {cliente}, tienes noticias en {negocio}.`
+        };
+
+        let rawMessage = templates[type] || defaultTemplates[type] || defaultTemplates.DEFAULT;
+
+        // Placeholder replacement
+        message = rawMessage
+            .replace(/{cliente}/g, recipient.name)
+            .replace(/{negocio}/g, context.businessName)
+            .replace(/{puntos}/g, context.points || '')
+            .replace(/{premio}/g, context.rewardName || 'premio');
 
         const logEntry = {
             id: 'NOT-' + Math.random().toString(36).substr(2, 5).toUpperCase(),

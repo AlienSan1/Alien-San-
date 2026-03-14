@@ -308,6 +308,25 @@
                             </div>
                         </div>
                     </details>
+
+                    <details style="margin-top: 10px; cursor: pointer;">
+                        <summary style="font-size: 0.7rem; color: var(--acc-green); opacity: 0.8;">Personalizar Mensajes (Templates)</summary>
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 5px;">
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:0.65rem; color:#aaa;">Bienvenida</label>
+                                <textarea id="tmplWelcome" style="width:100%; height:60px; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; font-size:0.75rem; margin-top:5px;"></textarea>
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-size:0.65rem; color:#aaa;">Premio Ganado</label>
+                                <textarea id="tmplReward" style="width:100%; height:60px; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; font-size:0.75rem; margin-top:5px;"></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size:0.65rem; color:#aaa;">Bono de Red</label>
+                                <textarea id="tmplNetwork" style="width:100%; height:60px; padding:8px; background:#111; border:1px solid #444; color:white; border-radius:5px; font-size:0.75rem; margin-top:5px;"></textarea>
+                            </div>
+                            <small style="font-size:0.65rem; opacity:0.5; display:block; margin-top:5px;">Variables: {cliente}, {negocio}, {puntos}, {premio}</small>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -378,6 +397,22 @@
 
         <!-- CENTRO: USUARIOS ACTIVOS Y MÉTRICAS -->
         <div class="panel">
+            <h3 class="alien-font">📊 Métricas Galácticas</h3>
+            <div id="analyticsDashboard" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; margin-bottom:20px;">
+                <div class="stat-card" style="margin-bottom:0;">
+                    <small style="opacity:0.6; font-size:0.7rem;">VENTAS TOTALES</small>
+                    <div id="statTotalSales" style="font-size:1.2rem; color:var(--primary); font-weight:bold;">$0</div>
+                </div>
+                <div class="stat-card" style="margin-bottom:0;">
+                    <small style="opacity:0.6; font-size:0.7rem;">PUNTOS EMITIDOS</small>
+                    <div id="statTotalPoints" style="font-size:1.2rem; color:var(--acc-green); font-weight:bold;">0</div>
+                </div>
+                <div class="stat-card" style="margin-bottom:0; grid-column: span 2;">
+                    <small style="opacity:0.6; font-size:0.7rem;">TOP 3 PRODUCTOS</small>
+                    <div id="statTopProducts" style="font-size:0.8rem; margin-top:5px; color:#aaa;">Cargando...</div>
+                </div>
+            </div>
+
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3 class="alien-font">Usuarios Activos</h3>
                 <button class="config-trigger" onclick="toggleCatalogManager(true)">📦 GESTIONAR CATÁLOGO</button>
@@ -480,6 +515,11 @@
                 document.getElementById('configWAInstance').value = messaging.whatsappInstance || '';
                 document.getElementById('configWAToken').value = messaging.whatsappToken || '';
                 document.getElementById('configResendKey').value = messaging.resendKey || '';
+
+                const templates = messaging.templates || {};
+                document.getElementById('tmplWelcome').value = templates.WELCOME || '';
+                document.getElementById('tmplReward').value = templates.REWARD || '';
+                document.getElementById('tmplNetwork').value = templates.NETWORK || '';
                 
                 // RESTORE: Show delete button for any business that isn't the core demo ones
                 const isCoreDemo = ['REST_001', 'SPA_002'].includes(state.currentBusinessId);
@@ -518,6 +558,8 @@
             await renderUsers();
             await renderHistory();
             await renderRedemptionHistory();
+            await renderNotifications();
+            await renderAnalytics();
             
             document.getElementById('loader').style.display = 'none';
         };
@@ -753,6 +795,9 @@
                 state.cart = [];
                 await renderUsers();
                 await renderHistory();
+                await renderNotifications();
+                await renderAnalytics();
+
                 document.getElementById('cartStatus').style.display = 'none';
                 document.getElementById('newName').value = "";
                 document.getElementById('newPhone').value = "";
@@ -761,7 +806,6 @@
                 
                 const bonusMsg = result.bonus > 0 ? ` (+${result.bonus} pts de bono nivel ${result.tier})` : "";
                 alert(`Consumo registrado exitosamente.${bonusMsg}`);
-                renderNotifications();
             } catch (error) {
                 const msg = error.message || error.details || "Error desconocido";
                 const hint = error.hint ? `\nSugerencia: ${error.hint}` : "";
@@ -799,6 +843,37 @@
                     </div>
                 </div>
             `}).join('');
+        }
+
+        async function renderAnalytics() {
+            try {
+                const history = await transactionService.getBusinessHistory(state.currentBusinessId);
+                
+                const totalSales = history.reduce((sum, tx) => sum + tx.amount, 0);
+                const totalPoints = history.reduce((sum, tx) => sum + tx.points_earned, 0);
+                
+                // Top Products
+                const productCounts = {};
+                history.forEach(tx => {
+                    if (tx.items && Array.isArray(tx.items)) {
+                        tx.items.forEach(item => {
+                            productCounts[item.name] = (productCounts[item.name] || 0) + (item.qty || 1);
+                        });
+                    }
+                });
+                
+                const topProducts = Object.entries(productCounts)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 3)
+                    .map(([name, count]) => `${name} (${count})`)
+                    .join(', ');
+
+                document.getElementById('statTotalSales').innerText = `$${totalSales.toLocaleString()}`;
+                document.getElementById('statTotalPoints').innerText = totalPoints.toLocaleString();
+                document.getElementById('statTopProducts').innerText = topProducts || 'Sin transacciones';
+            } catch (err) {
+                console.error("Error al cargar analíticas:", err);
+            }
         }
 
         window.addNewProduct = async function () {
@@ -844,13 +919,18 @@
                 primary: document.getElementById('configPrimaryColor').value,
                 bg: document.getElementById('configBgColor').value,
                 rules: {
-                    personal: { threshold: parseInt(document.getElementById('configThresholdPersonal').value), rewardType: 'REWARD' },
-                    referral: { threshold: parseInt(document.getElementById('configThresholdReferral').value), rewardType: 'REF_REWARD' },
+                    personal: { threshold: parseInt(document.getElementById('configPersonalThreshold').value), rewardType: 'REWARD' },
+                    referral: { threshold: parseInt(document.getElementById('configReferralThreshold').value), rewardType: 'REF_REWARD' },
                     messaging: {
                         mode: document.getElementById('configMsgMode').value,
                         whatsappInstance: document.getElementById('configWAInstance').value,
                         whatsappToken: document.getElementById('configWAToken').value,
-                        resendKey: document.getElementById('configResendKey').value
+                        resendKey: document.getElementById('configResendKey').value,
+                        templates: {
+                            WELCOME: document.getElementById('tmplWelcome').value,
+                            REWARD: document.getElementById('tmplReward').value,
+                            NETWORK: document.getElementById('tmplNetwork').value
+                        }
                     }
                 },
                 currency: 'COP',
