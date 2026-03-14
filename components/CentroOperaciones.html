@@ -340,8 +340,13 @@
             </div>
 
             <h3 class="alien-font" style="margin-top:40px;">Historial de Ventas</h3>
-            <div id="salesHistory" style="font-size: 0.8rem; max-height: 300px; overflow-y: auto;">
+            <div id="salesHistory" style="font-size: 0.8rem; max-height: 250px; overflow-y: auto;">
                 <!-- Historial dinámico -->
+            </div>
+
+            <h3 class="alien-font" style="margin-top:40px;">Historial de Premios</h3>
+            <div id="redemptionHistory" style="font-size: 0.8rem; max-height: 250px; overflow-y: auto;">
+                <!-- Historial de redenciones -->
             </div>
         </div>
 
@@ -441,7 +446,34 @@
             await renderCatalog();
             await renderUsers();
             await renderHistory();
+            await renderRedemptionHistory();
         };
+
+        async function renderRedemptionHistory() {
+            const container = document.getElementById('redemptionHistory');
+            const { data, error } = await supabase
+                .from('redemptions')
+                .select('*, users(name)')
+                .eq('business_id', state.currentBusinessId)
+                .order('created_at', { ascending: false });
+            
+            if (error || !data) {
+                container.innerHTML = "<p style='opacity:0.5;'>Sin redenciones aún.</p>";
+                return;
+            }
+
+            container.innerHTML = data.map(r => `
+                <div style="padding:10px; border-bottom:1px solid #333; margin-bottom:5px; background:rgba(188,19,254,0.05); border-radius:5px; border-left:3px solid #bc13fe;">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                        <span>${r.users?.name || 'Alien'}</span>
+                        <span style="color:#bc13fe;">PREMIO RECLAMADO</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#666;">
+                        ${new Date(r.created_at).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
 
         async function testConnection() {
             console.log("Testeando conexión con Supabase...");
@@ -697,6 +729,36 @@
             toggleModal(false);
         };
 
+        window.redeemReward = async function(userId, currentRewards) {
+            if (currentRewards <= 0) return;
+            if (!confirm(`¿Confirmas que el cliente va a redimir 1 premio ahora? Se descontará de su saldo.`)) return;
+
+            try {
+                // 1. Descontar premio en Supabase
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({ rewards_available: currentRewards - 1 })
+                    .eq('id', userId);
+                
+                if (updateError) throw updateError;
+
+                // 2. Registrar en historial de redenciones
+                await transactionService.recordRedemption({
+                    userId: userId,
+                    businessId: state.currentBusinessId,
+                    rewardType: 'REWARD_CLAIMED',
+                    pointsSpent: 0
+                });
+
+                alert("¡Premio redimido exitosamente!");
+                await renderUsers();
+                await renderRedemptionHistory();
+            } catch (err) {
+                console.error("Error al redimir premio:", err);
+                alert("Error al procesar la redención: " + err.message);
+            }
+        };
+
         async function renderCatalogManager() {
             const list = document.getElementById('catalogManagerList');
             const catalog = await catalogService.getItems(state.currentBusinessId);
@@ -725,12 +787,21 @@
 
             list.innerHTML = state.users.map(u => `
                 <div class="stat-card">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span><strong>${u.name}</strong></span>
-                        <span style="color:var(--acc-green)">${u.rewards_available || 0} Premios</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>${u.name}</strong>
+                        <div style="display:flex; gap:5px;">
+                            ${(u.rewards_available > 0) ? `<button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#00ff88; color:black;" onclick="redeemReward('${u.id}', ${u.rewards_available})">REDIMIR (${u.rewards_available})</button>` : `<span style="color:var(--acc-green); font-size:0.7rem;">${u.rewards_available || 0} Premios</span>`}
+                        </div>
                     </div>
-                    <div style="font-size:0.8rem; margin-top:5px;">
-                        Puntos: ${u.personal_progress || 0} / ${threshold}
+                    <div style="font-size:0.75rem; margin-top:8px; display:flex; flex-direction:column; gap:3px;">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span>📦 Personales (Próximo):</span>
+                            <span>${u.personal_progress || 0} / ${threshold}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; color:var(--acc-green)">
+                            <span>🚀 Por Red (Referidos):</span>
+                            <span>${u.total_accumulated || 0} Pts</span>
+                        </div>
                         <div style="height:4px; background:#222; border-radius:2px; margin-top:5px;">
                             <div style="height:100%; background:var(--primary); width:${Math.min(100, ((u.personal_progress || 0) / threshold) * 100)}%;"></div>
                         </div>
