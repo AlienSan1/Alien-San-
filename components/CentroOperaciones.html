@@ -281,7 +281,8 @@
                     gratis.</small>
             </div>
 
-            <button class="btn-action" style="margin-top:20px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
+            <button class="btn-action" style="background:var(--primary); color:black;" onclick="createNewBusiness()">➕ NUEVO NEGOCIO</button>
+            <button class="btn-action" style="margin-top:5px;" onclick="saveConfig()">GUARDAR Y APLICAR</button>
             <button id="deleteBizBtn" class="btn-action" style="background:#ff4444; color:white; margin-top:5px; display:none;"
                 onclick="deleteBusiness()">ELIMINAR ESTE NEGOCIO</button>
             <button class="btn-action" style="background:#333; color:white; margin-top:5px;"
@@ -441,9 +442,9 @@
                 document.getElementById('configPrimaryColor').value = primary.startsWith('#') ? primary : '#00f2ff';
                 document.getElementById('configBgColor').value = bg.startsWith('#') ? bg : '#050505';
                 
-                // Show delete button only for existing businesses that aren't the default ones
-                const isDefault = ['REST_001', 'SPA_002', 'CUSTOM'].includes(state.currentBusinessId);
-                document.getElementById('deleteBizBtn').style.display = isDefault ? 'none' : 'block';
+                // RESTORE: Show delete button for any business that isn't the fixed ones
+                const isFixed = ['REST_001', 'SPA_002', 'CUSTOM'].includes(state.currentBusinessId);
+                document.getElementById('deleteBizBtn').style.display = isFixed ? 'none' : 'block';
             }
             document.getElementById('configModal').style.display = show ? 'flex' : 'none';
         };
@@ -824,6 +825,38 @@
 
             if (state.currentBusinessId === 'CUSTOM') updateBusinessContext();
             toggleModal(false);
+        };
+
+        window.createNewBusiness = async function() {
+            const name = prompt("Nombre para el nuevo negocio:", "Mi Nuevo Negocio Alien");
+            if (!name) return;
+
+            const id = 'BIZ_' + Math.random().toString(36).substr(2, 5).toUpperCase();
+            
+            try {
+                const { error } = await supabase.from('businesses').insert({
+                    id: id,
+                    name: name,
+                    type: 'PRODUCT',
+                    currency: 'COP',
+                    theme_primary: '#00f2ff',
+                    theme_bg: '#050505',
+                    rules: {
+                        personal: { threshold: 10, rewardType: 'REWARD' },
+                        referral: { threshold: 25, rewardType: 'REF_REWARD' }
+                    }
+                });
+
+                if (error) throw error;
+
+                alert(`Negocio "${name}" creado exitosamente.`);
+                state.currentBusinessId = id;
+                await populateBusinessSelector();
+                await updateBusinessContext();
+                toggleModal(false);
+            } catch (err) {
+                alert("Error al crear negocio: " + err.message);
+            }
         };
 
         window.deleteBusiness = async function() {
