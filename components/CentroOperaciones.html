@@ -509,18 +509,8 @@
                     }
                 }
 
-                // Record transaction in DB
-                await transactionService.recordTransaction({
-                    userId: user.id,
-                    businessId: state.currentBusinessId,
-                    amount: saleDetails.amount,
-                    pointsEarned: saleDetails.pointsEarned,
-                    items: saleDetails.items,
-                    totalQuantity: saleDetails.totalQuantity
-                });
-
-                // Update user state in DB
-                await supabase.from('users').upsert({
+                // 1. Update/Create user state in DB FIRST (to satisfy Foreign Key constraints)
+                const { error: userError } = await supabase.from('users').upsert({
                     id: user.id,
                     name: user.name,
                     business_id: user.business_id,
@@ -528,6 +518,18 @@
                     total_accumulated: user.total_accumulated,
                     rewards_available: user.rewards_available,
                     referrer_id: user.referrer_id
+                });
+
+                if (userError) throw userError;
+
+                // 2. Record transaction in DB
+                await transactionService.recordTransaction({
+                    userId: user.id,
+                    businessId: state.currentBusinessId,
+                    amount: saleDetails.amount,
+                    pointsEarned: saleDetails.pointsEarned,
+                    items: saleDetails.items,
+                    totalQuantity: saleDetails.totalQuantity
                 });
 
                 state.cart = [];
