@@ -602,17 +602,30 @@
             }
 
             container.innerHTML = data.map(r => `
-                <div style="padding:10px; border-bottom:1px solid #333; margin-bottom:5px; background:rgba(188,19,254,0.05); border-radius:5px; border-left:3px solid #bc13fe;">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                        <span>${r.users?.name || 'Alien'}</span>
-                        <span style="color:#bc13fe;">PREMIO RECLAMADO</span>
+                <div style="padding:10px; border-bottom:1px solid #333; margin-bottom:5px; background:rgba(188,19,254,0.05); border-radius:5px; border-left:3px solid #bc13fe; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                            <span style="color:#bc13fe;">${r.users?.name || 'Alien'} - PREMIO</span>
+                        </div>
+                        <div style="font-size:0.7rem; color:#666;">
+                            ${new Date(r.created_at).toLocaleString()}
+                        </div>
                     </div>
-                    <div style="font-size:0.7rem; color:#666;">
-                        ${new Date(r.created_at).toLocaleString()}
-                    </div>
+                    <button onclick="deleteRedemption('${r.id}')" style="background:none; border:none; color:#ff4444; opacity:0.3; cursor:pointer; font-size:1.1rem; padding:5px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.3">✖</button>
                 </div>
             `).join('');
         }
+
+        window.deleteRedemption = async function(redId) {
+            if (!confirm("¿Seguro que deseas eliminar este registro de premio reclamado?")) return;
+            try {
+                const { error } = await supabase.from('redemptions').delete().eq('id', redId);
+                if (error) throw error;
+                await renderRedemptionHistory();
+            } catch (err) {
+                alert("Error al eliminar registro: " + err.message);
+            }
+        };
 
         async function testConnection() {
             console.log("Testeando conexión con Supabase...");
@@ -829,8 +842,9 @@
                 const dateStr = date.toLocaleDateString();
                 
                 return `
-                <div style="padding:15px; border-bottom:1px solid #333; margin-bottom:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left: 3px solid var(--primary);">
-                    <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 5px;">
+                <div style="padding:15px; border-bottom:1px solid #333; margin-bottom:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left: 3px solid var(--primary); position:relative;">
+                    <button onclick="deleteTransaction('${tx.id}')" style="position:absolute; top:10px; right:10px; background:none; border:none; color:#ff4444; opacity:0.3; cursor:pointer;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.3">✖</button>
+                    <div style="display:flex; justify-content:space-between; align-items: center; margin-bottom: 5px; padding-right: 20px;">
                         <span style="font-weight:bold; color: #fff;">${tx.users?.name || 'Alien Solitario'}</span>
                         <span style="color:var(--primary); font-weight: bold; font-size: 1.1rem;">$${tx.amount.toLocaleString()}</span>
                     </div>
@@ -844,6 +858,18 @@
                 </div>
             `}).join('');
         }
+
+        window.deleteTransaction = async function(txId) {
+            if (!confirm("¿Seguro que deseas eliminar esta venta? Esto no devolverá los puntos al cliente, solo limpia el historial.")) return;
+            try {
+                const { error } = await supabase.from('transactions').delete().eq('id', txId);
+                if (error) throw error;
+                await renderHistory();
+                await renderAnalytics();
+            } catch (err) {
+                alert("Error: " + err.message);
+            }
+        };
 
         async function renderAnalytics() {
             try {
@@ -1104,6 +1130,20 @@
             }
         };
 
+        window.deleteUser = async function(userId) {
+            const u = state.users.find(x => x.id === userId);
+            if (!u) return;
+            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${u.name}? Se borrarán sus puntos y acceso. Sus compras quedarán en el historial como 'Alien Anónimo'.`)) return;
+            
+            try {
+                const { error } = await supabase.from('users').delete().eq('id', userId);
+                if (error) throw error;
+                await renderUsers();
+            } catch (err) {
+                alert("Error al eliminar usuario: " + err.message);
+            }
+        };
+
         async function renderCatalogManager() {
             const list = document.getElementById('catalogManagerList');
             const catalog = await catalogService.getItems(state.currentBusinessId);
@@ -1137,6 +1177,7 @@
                         <div style="display:flex; gap:5px;">
                             <button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#333; color:white; border:1px solid #555;" onclick="editUserContact('${u.id}')">EDITAR</button>
                             ${(u.rewards_available > 0) ? `<button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#00ff88; color:black;" onclick="tryRedeem('${u.id}')">REDIMIR (${u.rewards_available})</button>` : `<span style="color:var(--acc-green); font-size:0.7rem;">${u.rewards_available || 0} Premios</span>`}
+                            <button class="btn" style="padding:2px 8px; font-size:0.6rem; background:#441111; color:#ff4444; border:1px solid #662222;" onclick="deleteUser('${u.id}')">BORRAR</button>
                         </div>
                     </div>
                     <div style="font-size:0.65rem; opacity:0.6; margin-top:4px;">
