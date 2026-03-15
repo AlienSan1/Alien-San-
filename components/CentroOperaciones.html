@@ -663,14 +663,20 @@
 
         async function populateBusinessSelector() {
             const select = document.getElementById('activeBusiness');
-            const { data: businesses } = await supabase.from('businesses').select('id, name, type');
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) return;
+
+            const { data: businesses } = await supabase
+                .from('businesses')
+                .select('id, name, type')
+                .eq('owner_id', user.id); // Filtrado explícito por dueño
             
             if (businesses && businesses.length > 0) {
-                // Si no hay nada seleccionado, tomamos el primero
-                if (!state.currentBusinessId || state.currentBusinessId === 'REST_001') {
-                     // Solo cambiamos si el actual no existe o es el default pero hay más opciones
-                     const exists = businesses.find(b => b.id === state.currentBusinessId);
-                     if (!exists) state.currentBusinessId = businesses[0].id;
+                // Si no hay nada seleccionado o el actual no está en la lista permitida
+                const exists = businesses.find(b => b.id === state.currentBusinessId);
+                if (!state.currentBusinessId || !exists) {
+                    state.currentBusinessId = businesses[0].id;
                 }
 
                 let html = businesses.map(b => `
@@ -678,10 +684,11 @@
                         ${b.name} [ID: ${b.id.slice(-4)}] (${b.type === 'SERVICE' ? 'Servicios' : 'Productos'})
                     </option>
                 `).join('');
-                html += `<option value="CUSTOM" ${state.currentBusinessId === 'CUSTOM' ? 'selected' : ''}>Configuración Personalizada</option>`;
                 
                 select.innerHTML = html;
                 select.value = state.currentBusinessId;
+            } else {
+                select.innerHTML = '<option value="">Sin Negocios</option>';
             }
         }
 
@@ -1092,6 +1099,7 @@
             
             try {
                 console.log(`Actualizando negocio ${newBiz.id} en Supabase...`);
+                const { data: { user } } = await supabase.auth.getUser();
                 const { error } = await supabase.from('businesses').upsert({
                     id: newBiz.id,
                     name: newBiz.name,
@@ -1100,7 +1108,8 @@
                     price_per_unit: 0,
                     theme_primary: newBiz.primary,
                     theme_bg: newBiz.bg,
-                    rules: newBiz.rules
+                    rules: newBiz.rules,
+                    owner_id: user.id // Mantener el vínculo
                 });
                 
                 if (error) {
@@ -1129,6 +1138,7 @@
             const id = 'BIZ_' + Math.random().toString(36).substr(2, 5).toUpperCase();
             
             try {
+                const { data: { user } } = await supabase.auth.getUser();
                 const { error } = await supabase.from('businesses').insert({
                     id: id,
                     name: name,
@@ -1139,7 +1149,8 @@
                     rules: {
                         personal: { threshold: 10, rewardType: 'REWARD' },
                         referral: { threshold: 25, rewardType: 'REF_REWARD' }
-                    }
+                    },
+                    owner_id: user.id // Creado por este usuario
                 });
 
                 if (error) throw error;
@@ -1393,12 +1404,13 @@
         }
 
         async function init() {
-            // AUTH CHECK
-            const isAuth = sessionStorage.getItem('alien_admin_auth');
-            if (isAuth === 'true') {
+            // AUTH CHECK RIGUROSO
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
                 document.getElementById('loginShield').style.display = 'none';
             } else {
-                return; // Bloquear carga si no está autorizado
+                document.getElementById('loginShield').style.display = 'flex';
+                return;
             }
 
             await testConnection();
@@ -1425,7 +1437,6 @@
 
                 if (error) throw error;
 
-                sessionStorage.setItem('alien_admin_auth', 'true');
                 document.getElementById('loginShield').style.display = 'none';
                 init();
             } catch (err) {
@@ -1440,7 +1451,6 @@
         // Cerrar sesión
         window.logout = async () => {
             await supabase.auth.signOut();
-            sessionStorage.removeItem('alien_admin_auth');
             location.reload();
         };
 
@@ -1448,7 +1458,6 @@
         async function checkSession() {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
-                sessionStorage.setItem('alien_admin_auth', 'true');
                 init();
             }
         }
