@@ -1057,10 +1057,10 @@
                 name: document.getElementById('configBizName').value || 'Mi Negocio Alien',
                 primary: planService.isFeatureEnabled(state.currentBusinessConfig, 'custom_theme') 
                     ? document.getElementById('configPrimaryColor').value 
-                    : '#00f2ff',
+                    : (state.currentBusinessConfig.theme_primary || '#00f2ff'),
                 bg: planService.isFeatureEnabled(state.currentBusinessConfig, 'custom_theme') 
                     ? document.getElementById('configBgColor').value 
-                    : '#050505',
+                    : (state.currentBusinessConfig.theme_bg || '#050505'),
                 rules: {
                     personal: { threshold: personalThreshold, rewardType: 'REWARD' },
                     referral: { threshold: referralThreshold, rewardType: 'REF_REWARD' },
@@ -1404,23 +1404,31 @@
             renderNotifications();
         }
 
+        let loginAttempts = 0;
         window.attemptLogin = () => {
+            if (loginAttempts >= 5) {
+                alert("🚫 SISTEMA BLOQUEADO. Demasiados intentos fallidos (Alien Shield Security).");
+                return;
+            }
+
             const pass = document.getElementById('adminPassword').value;
-            // CLAVE MAESTRA TEMPORAL (Se recomienda cambiar o usar Supabase Auth en el futuro)
             const MASTER_KEY = 'ALIEN-SAN-MASTER'; 
 
             if (pass === MASTER_KEY) {
                 sessionStorage.setItem('alien_admin_auth', 'true');
                 document.getElementById('loginShield').style.display = 'none';
-                init(); // Iniciar carga de datos al autorizar
+                init();
             } else {
+                loginAttempts++;
                 const err = document.getElementById('loginError');
                 err.style.display = 'block';
+                if (loginAttempts >= 3) {
+                    err.innerText = `👽 CLAVE INCORRECTA. Quedan ${5 - loginAttempts} intentos.`;
+                }
                 setTimeout(() => err.style.display = 'none', 3000);
             }
         };
 
-        // Verificación de seguridad inmediata
         if (sessionStorage.getItem('alien_admin_auth') === 'true') {
             init();
         }
