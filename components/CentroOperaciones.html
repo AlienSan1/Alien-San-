@@ -494,22 +494,27 @@
                 }
             },
             currentBusinessConfig: null,
-            engine: null
-        };
-
         // UI Toggles
         window.toggleModal = (show) => {
             if (show) {
                 const biz = state.currentBusinessConfig || {};
+                console.log("Abriendo modal para:", biz.id, biz);
+                
                 // Populate modal with current values
-                document.getElementById('configBizName').value = document.getElementById('displayBizName').innerText;
+                document.getElementById('configBizName').value = biz.name || document.getElementById('displayBizName').innerText;
+                
                 const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
                 const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-dark').trim();
-                document.getElementById('configPrimaryColor').value = primary.startsWith('#') ? primary : '#00f2ff';
-                document.getElementById('configBgColor').value = bg.startsWith('#') ? bg : '#050505';
+                
+                document.getElementById('configPrimaryColor').value = biz.theme_primary || (primary.startsWith('#') ? primary : '#00f2ff');
+                document.getElementById('configBgColor').value = biz.theme_bg || (bg.startsWith('#') ? bg : '#050505');
+
+                // Loyalty Rules Population
+                const rules = biz.rules || {};
+                document.getElementById('configThresholdPersonal').value = rules.personal?.threshold || 10;
+                document.getElementById('configThresholdReferral').value = rules.referral?.threshold || 25;
 
                 // Messaging Rules
-                const rules = biz.rules || {};
                 const messaging = rules.messaging || {};
                 document.getElementById('configMsgMode').value = messaging.mode || 'SIM';
                 document.getElementById('configWAInstance').value = messaging.whatsappInstance || '';
@@ -521,13 +526,12 @@
                 document.getElementById('tmplReward').value = templates.REWARD || '';
                 document.getElementById('tmplNetwork').value = templates.NETWORK || '';
                 
-                // RESTORE: Show delete button for any business that isn't the core demo ones
                 const isCoreDemo = ['REST_001', 'SPA_002'].includes(state.currentBusinessId);
                 document.getElementById('deleteBizBtn').style.display = isCoreDemo ? 'none' : 'block';
-                document.getElementById('deleteBizBtn').style.marginTop = '15px'; // Ensure spacing
             }
             document.getElementById('configModal').style.display = show ? 'flex' : 'none';
         };
+
         window.toggleCatalogManager = (show) => {
             if (show) renderCatalogManager();
             document.getElementById('catalogModal').style.display = show ? 'flex' : 'none';
@@ -542,26 +546,37 @@
             
             document.getElementById('loader').style.display = 'block';
             
-            let biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
-            state.currentBusinessConfig = biz;
+            try {
+                let biz = state.currentBusinessId === 'CUSTOM' ? state.customConfig : await businessService.getBusiness(state.currentBusinessId);
+                
+                if (!biz) {
+                    console.warn(`Negocio ${state.currentBusinessId} no encontrado, usando backup.`);
+                    biz = { name: "Alien Biz", theme_primary: "#00f2ff", theme_bg: "#050505", rules: {} };
+                }
 
-            // Init Engine with real logic
-            state.engine = new LoyaltyEngine(biz);
+                state.currentBusinessConfig = biz;
+                state.engine = new LoyaltyEngine(biz);
 
-            document.documentElement.style.setProperty('--primary', biz.theme?.primary || biz.theme_primary || biz.primary);
-            document.documentElement.style.setProperty('--bg-dark', biz.theme?.bg || biz.theme_bg || biz.bg);
-            document.getElementById('displayBizName').innerText = biz.name;
-            document.getElementById('businessLogo').innerText = biz.name.charAt(0);
-            document.getElementById('businessLogo').style.background = biz.theme?.primary || biz.theme_primary || biz.primary;
+                const primary = biz.theme_primary || biz.primary || '#00f2ff';
+                const bg = biz.theme_bg || biz.bg || '#050505';
 
-            await renderCatalog();
-            await renderUsers();
-            await renderHistory();
-            await renderRedemptionHistory();
-            await renderNotifications();
-            await renderAnalytics();
-            
-            document.getElementById('loader').style.display = 'none';
+                document.documentElement.style.setProperty('--primary', primary);
+                document.documentElement.style.setProperty('--bg-dark', bg);
+                document.getElementById('displayBizName').innerText = biz.name;
+                document.getElementById('businessLogo').innerText = biz.name.charAt(0);
+                document.getElementById('businessLogo').style.background = primary;
+
+                await renderCatalog();
+                await renderUsers();
+                await renderHistory();
+                await renderRedemptionHistory();
+                await renderNotifications();
+                await renderAnalytics();
+            } catch (err) {
+                console.error("Error en updateBusinessContext:", err);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
         };
 
         async function populateBusinessSelector() {
@@ -939,14 +954,24 @@
         };
 
         window.saveConfig = async function() {
+            console.log("Iniciando guardado de configuración...");
+            
+            const personalThreshold = parseInt(document.getElementById('configThresholdPersonal').value);
+            const referralThreshold = parseInt(document.getElementById('configThresholdReferral').value);
+
+            if (isNaN(personalThreshold) || isNaN(referralThreshold)) {
+                alert("⚠️ Las metas de fidelización deben ser números válidos.");
+                return;
+            }
+
             const newBiz = {
                 id: state.currentBusinessId === 'CUSTOM' ? 'CUSTOM' : state.currentBusinessId,
                 name: document.getElementById('configBizName').value || 'Mi Negocio Alien',
                 primary: document.getElementById('configPrimaryColor').value,
                 bg: document.getElementById('configBgColor').value,
                 rules: {
-                    personal: { threshold: parseInt(document.getElementById('configPersonalThreshold').value), rewardType: 'REWARD' },
-                    referral: { threshold: parseInt(document.getElementById('configReferralThreshold').value), rewardType: 'REF_REWARD' },
+                    personal: { threshold: personalThreshold, rewardType: 'REWARD' },
+                    referral: { threshold: referralThreshold, rewardType: 'REF_REWARD' },
                     messaging: {
                         mode: document.getElementById('configMsgMode').value,
                         whatsappInstance: document.getElementById('configWAInstance').value,
@@ -963,6 +988,8 @@
                 type: 'PRODUCT'
             };
             
+            console.log("Objeto a guardar:", newBiz);
+
             if (state.currentBusinessId === 'CUSTOM') {
                 state.customConfig = newBiz;
                 localStorage.setItem('custom_brand', JSON.stringify(newBiz));
@@ -980,19 +1007,24 @@
                     theme_bg: newBiz.bg,
                     rules: newBiz.rules
                 });
-                if (error) throw error;
-                console.log("Configuración guardada exitosamente.");
-                alert("Configuración de marca actualizada.");
-                updateBusinessContext();
-                populateBusinessSelector(); // Update selector manually after save
+                
+                if (error) {
+                    console.error("Error de Supabase:", error);
+                    throw error;
+                }
+
+                console.log("Configuración guardada exitosamente en DB.");
+                alert("✅ ¡Configuración de marca actualizada!");
+                
+                await updateBusinessContext();
+                await populateBusinessSelector();
+                
+                toggleModal(false);
             } catch (err) {
                 console.error("Error al registrar marca:", err);
                 const msg = err.message || err.details || "Error de red o permisos";
-                alert(`Error al registrar marca en base de datos: ${msg}\n\nVerifica que la tabla 'businesses' exista.`);
+                alert(`❌ Error al registrar marca: ${msg}\n\nVerifica que la tabla 'businesses' exista.`);
             }
-
-            if (state.currentBusinessId === 'CUSTOM') updateBusinessContext();
-            toggleModal(false);
         };
 
         window.createNewBusiness = async function() {
