@@ -235,6 +235,7 @@
         <!-- STEP 3: CUENTA -->
         <div class="step" id="step3">
             <h2 class="alien-title">Claves de Mando</h2>
+            <p style="text-align: center; font-size: 0.8rem; opacity: 0.6; margin-bottom: 20px;">Configura tus credenciales de acceso privado.</p>
             <div class="input-group">
                 <label>EMAIL DE ADMINISTRADOR</label>
                 <input type="email" id="adminEmail" placeholder="tu@email.com">
@@ -246,8 +247,21 @@
 
             <div class="nav-buttons">
                 <button class="btn btn-secondary" onclick="nextStep(2)">Atrás</button>
-                <button class="btn btn-primary" onclick="finalizeOnboarding()">Despegar 🚀</button>
+                <button class="btn btn-primary" id="finalizeBtn" onclick="checkPaymentNeed()">Continuar 🛰️</button>
             </div>
+        </div>
+
+        <!-- STEP 4: PAGO (SIMULADO) -->
+        <div class="step" id="step4">
+            <h2 class="alien-title">Asegura tu Órbita</h2>
+            <div style="background: rgba(0,242,255,0.05); padding: 25px; border-radius: 20px; border: 1px solid var(--primary); text-align: center; margin-bottom: 30px;">
+                <h3 id="payPlanName" style="color: var(--primary); margin: 0;">PLAN ...</h3>
+                <p id="payPlanPrice" style="font-size: 2rem; font-weight: bold; margin: 10px 0;">$...</p>
+                <p style="font-size: 0.8rem; opacity: 0.7;">Estás a un paso de desbloquear el poder total de Alien Brand.</p>
+            </div>
+            
+            <button class="btn btn-primary" style="width: 100%;" onclick="finalizeOnboarding()">Simular Pago y Despegar 🚀</button>
+            <p style="font-size: 0.7rem; text-align: center; margin-top: 15px; opacity: 0.5;">En producción, aquí serás redirigido a la pasarela segura de Stripe.</p>
         </div>
     </div>
 
@@ -260,7 +274,8 @@
         window.nextStep = (n) => {
             document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
             document.getElementById(`step${n}`).classList.add('active');
-            document.getElementById('progressBar').style.width = `${(n/3)*100}%`;
+            // Update progress: 4 total steps now
+            document.getElementById('progressBar').style.width = `${(n/4)*100}%`;
             currentStep = n;
         };
 
@@ -268,6 +283,23 @@
             selectedPlan = plan;
             document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
             el.classList.add('selected');
+        };
+
+        window.checkPaymentNeed = () => {
+            const bizName = document.getElementById('bizName').value;
+            const email = document.getElementById('adminEmail').value;
+            const pass = document.getElementById('adminPass').value;
+
+            if (!bizName || !email || !pass) return alert("Completa todos los datos galácticos.");
+
+            if (selectedPlan === 'FREE') {
+                finalizeOnboarding();
+            } else {
+                // Setup and show payment step
+                document.getElementById('payPlanName').innerText = `PLAN ALIEN ${selectedPlan}`;
+                document.getElementById('payPlanPrice').innerText = selectedPlan === 'PRO' ? '$29 / mes' : '$99 / mes';
+                nextStep(4);
+            }
         };
 
         window.finalizeOnboarding = async () => {
