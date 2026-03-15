@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS businesses (
         "personal": {"threshold": 10, "rewardType": "REWARD"},
         "referral": {"threshold": 25, "rewardType": "REF_REWARD"}
     }'::jsonb,
+    plan_type TEXT DEFAULT 'FREE' CHECK (plan_type IN ('FREE', 'PRO', 'ULTRA')),
+    subscription_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

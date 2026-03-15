@@ -291,7 +291,7 @@
             <div id="businessLogo">A</div>
             <div>
                 <h1 class="alien-font" id="displayBizName" style="margin:0;">Command Center v2.0</h1>
-                <span style="opacity: 0.6; font-size: 0.9rem;">Plataforma de Fidelización SaaS</span>
+                <span style="opacity: 0.6; font-size: 0.9rem;">Plataforma de Fidelización SaaS</span> - <span id="displayPlan" style="font-weight:bold; font-size:0.8rem;">PLAN: ...</span>
             </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-end;">
@@ -540,6 +540,7 @@
         import { transactionService } from '../logic/transactionService.js';
         import LoyaltyEngine from '../logic/compensationEngine.js';
         import { notificationService } from '../logic/notificationService.js';
+        import { planService } from '../logic/planService.js';
 
         const state = {
             currentBusinessId: 'REST_001',
@@ -572,6 +573,15 @@
                 
                 document.getElementById('configPrimaryColor').value = biz.theme_primary || (primary.startsWith('#') ? primary : '#00f2ff');
                 document.getElementById('configBgColor').value = biz.theme_bg || (bg.startsWith('#') ? bg : '#050505');
+
+                // Visual Gating for Theme
+                const canTheme = planService.isFeatureEnabled(biz, 'custom_theme');
+                document.getElementById('configPrimaryColor').disabled = !canTheme;
+                document.getElementById('configBgColor').disabled = !canTheme;
+                if (!canTheme) {
+                    console.log("Personalización de colores bloqueada por plan.");
+                    // Podríamos añadir un badge de "Upgrade" aquí
+                }
 
                 // Loyalty Rules Population
                 const rules = biz.rules || {};
@@ -626,7 +636,12 @@
 
                 document.documentElement.style.setProperty('--primary', primary);
                 document.documentElement.style.setProperty('--bg-dark', bg);
+                
+                const planName = planService.getPlanName(biz);
                 document.getElementById('displayBizName').innerText = biz.name;
+                document.getElementById('displayPlan').innerText = `PLAN: ${planName}`;
+                document.getElementById('displayPlan').style.color = biz.subscription_active ? 'var(--primary)' : '#ff4444';
+                
                 document.getElementById('businessLogo').innerText = biz.name.charAt(0);
                 document.getElementById('businessLogo').style.background = primary;
 
@@ -989,6 +1004,15 @@
             if (!name || isNaN(price) || isNaN(points)) return alert("Completa todos los campos");
 
             try {
+                // PLAN LIMIT CHECK
+                const { data: currentProducts } = await supabase.from('products').select('id', { count: 'exact' }).eq('business_id', state.currentBusinessId);
+                const count = currentProducts ? currentProducts.length : 0;
+                
+                const canAdd = await planService.checkLimit(state.currentBusinessConfig, 'products', count);
+                if (!canAdd) {
+                    return alert(`👽 ¡Límite alcanzado! Tu plan actual (${planService.getPlanName(state.currentBusinessConfig)}) solo permite ${planService.getPlan(state.currentBusinessConfig).limits.products} productos. ¡Sube de nivel para expandir tu catálogo!`);
+                }
+
                 await catalogService.addItem(state.currentBusinessId, { name, price, points });
 
                 document.getElementById('newProdName').value = "";
@@ -1031,8 +1055,12 @@
             const newBiz = {
                 id: state.currentBusinessId === 'CUSTOM' ? 'CUSTOM' : state.currentBusinessId,
                 name: document.getElementById('configBizName').value || 'Mi Negocio Alien',
-                primary: document.getElementById('configPrimaryColor').value,
-                bg: document.getElementById('configBgColor').value,
+                primary: planService.isFeatureEnabled(state.currentBusinessConfig, 'custom_theme') 
+                    ? document.getElementById('configPrimaryColor').value 
+                    : '#00f2ff',
+                bg: planService.isFeatureEnabled(state.currentBusinessConfig, 'custom_theme') 
+                    ? document.getElementById('configBgColor').value 
+                    : '#050505',
                 rules: {
                     personal: { threshold: personalThreshold, rewardType: 'REWARD' },
                     referral: { threshold: referralThreshold, rewardType: 'REF_REWARD' },
