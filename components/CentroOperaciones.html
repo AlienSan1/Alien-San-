@@ -279,10 +279,12 @@
         <div class="login-card">
             <h1 style="font-size: 3rem; margin: 0;">👽</h1>
             <h2 class="alien-font">Acceso Restringido</h2>
-            <p style="opacity: 0.6; font-size: 0.8rem; margin-bottom: 20px;">INGRESE CLAVE DE COMANDO MAESTRA</p>
+            <p style="opacity: 0.6; font-size: 0.8rem; margin-bottom: 20px;">INGRESE CREDENCIALES DE COMANDO</p>
+            <input type="email" id="adminEmail" placeholder="tu@email.com" style="margin-bottom: 10px;">
             <input type="password" id="adminPassword" placeholder="••••••••" onkeypress="if(event.key === 'Enter') attemptLogin()">
             <button class="btn-action" onclick="attemptLogin()">AUTORIZAR INGRESO</button>
-            <div id="loginError" style="color: #ff4444; font-size: 0.8rem; margin-top: 15px; display: none;">👽 CLAVE INCORRECTA. ACCESO DENEGADO.</div>
+            <div id="loginError" style="color: #ff4444; font-size: 0.8rem; margin-top: 15px; display: none;">👽 ACCESO DENEGADO. VERIFICA TUS CREDENCIALES.</div>
+            <p style="font-size: 0.7rem; margin-top: 20px; opacity: 0.5;">¿No tienes cuenta? <a href="./PortalOnboarding.html" style="color: var(--primary);">Registra tu Negocio aquí</a></p>
         </div>
     </div>
     <div id="loader" style="position:fixed; top:10px; right:50%; transform:translateX(50%); background:var(--primary); color:black; padding:5px 15px; border-radius:20px; font-size:0.7rem; font-weight:bold; display:none; z-index:10000; box-shadow:0 0 15px var(--primary);">CARGANDO DATOS...</div>
@@ -303,6 +305,7 @@
                     </select>
                 </div>
                 <button class="config-trigger" style="background:var(--primary); color:black; border:none; padding:5px 12px; font-weight:bold;" onclick="createNewBusiness()">➕ NUEVO NEGOCIO</button>
+                <button class="config-trigger" style="background:rgba(255,68,68,0.2); color:#ff4444; border:1px solid #ff4444; padding:5px 12px;" onclick="logout()">SALIR 🚪</button>
             </div>
         </div>
     </div>
@@ -1405,33 +1408,51 @@
         }
 
         let loginAttempts = 0;
-        window.attemptLogin = () => {
+        window.attemptLogin = async () => {
+            const email = document.getElementById('adminEmail').value;
+            const pass = document.getElementById('adminPassword').value;
+            
             if (loginAttempts >= 5) {
-                alert("🚫 SISTEMA BLOQUEADO. Demasiados intentos fallidos (Alien Shield Security).");
+                alert("🚫 SISTEMA BLOQUEADO. Demasiados intentos fallidos.");
                 return;
             }
 
-            const pass = document.getElementById('adminPassword').value;
-            const MASTER_KEY = 'ALIEN-SAN-MASTER'; 
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: pass
+                });
 
-            if (pass === MASTER_KEY) {
+                if (error) throw error;
+
                 sessionStorage.setItem('alien_admin_auth', 'true');
                 document.getElementById('loginShield').style.display = 'none';
                 init();
-            } else {
+            } catch (err) {
                 loginAttempts++;
-                const err = document.getElementById('loginError');
-                err.style.display = 'block';
-                if (loginAttempts >= 3) {
-                    err.innerText = `👽 CLAVE INCORRECTA. Quedan ${5 - loginAttempts} intentos.`;
-                }
-                setTimeout(() => err.style.display = 'none', 3000);
+                const errDiv = document.getElementById('loginError');
+                errDiv.innerText = `👽 ERROR: ${err.message}`;
+                errDiv.style.display = 'block';
+                setTimeout(() => errDiv.style.display = 'none', 4000);
             }
         };
 
-        if (sessionStorage.getItem('alien_admin_auth') === 'true') {
-            init();
+        // Cerrar sesión
+        window.logout = async () => {
+            await supabase.auth.signOut();
+            sessionStorage.removeItem('alien_admin_auth');
+            location.reload();
+        };
+
+        // Auto-check session on load
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                sessionStorage.setItem('alien_admin_auth', 'true');
+                init();
+            }
         }
+        checkSession();
     </script>
 </body>
 

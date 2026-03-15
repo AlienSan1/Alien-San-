@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alien San | SuperAdmin Panel</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #bc13fe; /* Púrpura para el SuperAdmin */
+            --bg-dark: #050505;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-dark);
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--glass);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(188, 19, 254, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--glass);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h2 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 2.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--glass);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            background: rgba(188, 19, 254, 0.1);
+            color: var(--primary);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        .plan-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .plan-FREE { background: #444; color: #fff; }
+        .plan-PRO { background: rgba(0, 242, 255, 0.2); color: #00f2ff; border: 1px solid #00f2ff; }
+        .plan-ULTRA { background: rgba(188, 19, 254, 0.2); color: #bc13fe; border: 1px solid #bc13fe; }
+
+        .status-active { color: #00ff88; }
+        .status-inactive { color: #ff4444; }
+
+        .btn-action {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.3s;
+        }
+
+        .btn-action:hover {
+            box-shadow: 0 0 15px var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1 style="margin:0; letter-spacing: 2px;">SUPERADMIN CENTER</h1>
+        <button class="btn-action" onclick="location.href='./CentroOperaciones.html'">Volver al Dashboard</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <p style="opacity:0.6; margin:0;">Negocios Totales</p>
+            <h2 id="totalBiz">0</h2>
+        </div>
+        <div class="stat-card">
+            <p style="opacity:0.6; margin:0;">Planes PRO/ULTRA</p>
+            <h2 id="premiumBiz">0</h2>
+        </div>
+        <div class="stat-card">
+            <p style="opacity:0.6; margin:0;">Suscripciones Activas</p>
+            <h2 id="activeSubs">0</h2>
+        </div>
+    </div>
+
+    <h2 style="margin-left:10px; opacity:0.8;">Gestión de Galaxias (Negocios)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Negocio</th>
+                <th>Plan</th>
+                <th>Estado</th>
+                <th>Creado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="businessTableBody">
+            <!-- Cargado dinámicamente -->
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { businessService } from '../logic/businessService.js';
+        import { supabase } from '../logic/supabaseClient.js';
+
+        async function init() {
+            // Verificación de SuperAdmin (Provisional por email)
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                alert("Acceso denegado. Debes estar logueado.");
+                location.href = './CentroOperaciones.html';
+                return;
+            }
+
+            loadDashboard();
+        }
+
+        async function loadDashboard() {
+            const businesses = await businessService.getAllBusinesses();
+            
+            document.getElementById('totalBiz').innerText = businesses.length;
+            document.getElementById('premiumBiz').innerText = businesses.filter(b => b.plan_type !== 'FREE').length;
+            document.getElementById('activeSubs').innerText = businesses.filter(b => b.subscription_active).length;
+
+            const tbody = document.getElementById('businessTableBody');
+            tbody.innerHTML = businesses.map(b => `
+                <tr>
+                    <td>
+                        <strong>${b.name}</strong><br>
+                        <small style="opacity:0.5;">${b.id}</small>
+                    </td>
+                    <td>
+                        <span class="plan-badge plan-${b.plan_type}">${b.plan_type}</span>
+                    </td>
+                    <td>
+                        <span class="${b.subscription_active ? 'status-active' : 'status-inactive'}">
+                            ${b.subscription_active ? '● Activa' : '● Suspendida'}
+                        </span>
+                    </td>
+                    <td>${new Date(b.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn-action" onclick="updatePlan('${b.id}', '${b.plan_type === 'FREE' ? 'PRO' : 'FREE'}')">Cambiar Plan</button>
+                        <button class="btn-action" style="background:#444;" onclick="toggleStatus('${b.id}', ${!b.subscription_active})">
+                            ${b.subscription_active ? 'Suspender' : 'Activar'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.updatePlan = async (id, newPlan) => {
+            const { error } = await supabase.from('businesses').update({ plan_type: newPlan }).eq('id', id);
+            if (error) alert("Error: " + error.message);
+            else loadDashboard();
+        };
+
+        window.toggleStatus = async (id, newStatus) => {
+            const { error } = await supabase.from('businesses').update({ subscription_active: newStatus }).eq('id', id);
+            if (error) alert("Error: " + error.message);
+            else loadDashboard();
+        };
+
+        init();
+    </script>
+</body>
+</html>

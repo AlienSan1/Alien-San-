@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alien San | Onboarding Galáctico</title>
+    <link rel="stylesheet" href="../styles/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --bg-dark: #050505;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at center, #0a1a0a 0%, #050505 100%);
+            color: white;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .onboarding-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .step {
+            display: none;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alien-title {
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-bottom: 8px;
+            margin-left: 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: white;
+            font-family: 'Outfit';
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        }
+
+        .plan-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .plan-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+        }
+
+        .plan-card:hover, .plan-card.selected {
+            border-color: var(--primary);
+            background: rgba(0, 242, 255, 0.05);
+        }
+
+        .plan-card h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+
+        .plan-card p {
+            margin: 5px 0 0;
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border-radius: 12px;
+            border: none;
+            font-weight: bold;
+            font-family: 'Outfit';
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: black;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: white;
+            border: 1px solid var(--border);
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: var(--primary);
+            transition: width 0.4s ease;
+            border-radius: 30px 30px 0 0;
+        }
+
+        /* Particles effect */
+        #particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles"></div>
+
+    <div class="onboarding-container">
+        <div class="progress-bar" id="progressBar" style="width: 33%"></div>
+        
+        <!-- STEP 1: NEGOCIO -->
+        <div class="step active" id="step1">
+            <h1 class="alien-title">Bienvenido Recluta</h1>
+            <p style="text-align: center; font-size: 0.9rem; opacity: 0.7; margin-bottom: 30px;">Iniciemos la creación de tu ecosistema de fidelización.</p>
+            
+            <div class="input-group">
+                <label>NOMBRE DEL NEGOCIO</label>
+                <input type="text" id="bizName" placeholder="Ej: Café Galáctico">
+            </div>
+            
+            <div class="input-group">
+                <label>TIPO DE INDUSTRIA</label>
+                <select id="bizType">
+                    <option value="RESTAURANT">Restaurante / Café</option>
+                    <option value="RETAIL">Tienda / Retail</option>
+                    <option value="SERVICES">Servicios / Spa</option>
+                    <option value="OTHER">Otro</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="nextStep(2)">Continuar</button>
+        </div>
+
+        <!-- STEP 2: PLAN -->
+        <div class="step" id="step2">
+            <h2 class="alien-title">Elige tu Poder</h2>
+            <div class="plan-grid">
+                <div class="plan-card selected" onclick="selectPlan('FREE', this)">
+                    <h3>Alien Base</h3>
+                    <p>Gratis • 10 Productos • 50 Clientes</p>
+                </div>
+                <div class="plan-card" onclick="selectPlan('PRO', this)">
+                    <h3>Alien Pro</h3>
+                    <p>$$ • Marca Ilimitada • Analíticas Avanzadas</p>
+                </div>
+                <div class="plan-card" onclick="selectPlan('ULTRA', this)">
+                    <h3>Alien Ultra</h3>
+                    <p>$$$ • Multi-sucursal • AI Insights</p>
+                </div>
+            </div>
+            
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="nextStep(1)">Atrás</button>
+                <button class="btn btn-primary" onclick="nextStep(3)">Siguiente</button>
+            </div>
+        </div>
+
+        <!-- STEP 3: CUENTA -->
+        <div class="step" id="step3">
+            <h2 class="alien-title">Claves de Mando</h2>
+            <div class="input-group">
+                <label>EMAIL DE ADMINISTRADOR</label>
+                <input type="email" id="adminEmail" placeholder="tu@email.com">
+            </div>
+            <div class="input-group">
+                <label>CONTRASEÑA</label>
+                <input type="password" id="adminPass" placeholder="••••••••">
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="nextStep(2)">Atrás</button>
+                <button class="btn btn-primary" onclick="finalizeOnboarding()">Despegar 🚀</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from '../logic/supabaseClient.js';
+        
+        let currentStep = 1;
+        let selectedPlan = 'FREE';
+
+        window.nextStep = (n) => {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${n}`).classList.add('active');
+            document.getElementById('progressBar').style.width = `${(n/3)*100}%`;
+            currentStep = n;
+        };
+
+        window.selectPlan = (plan, el) => {
+            selectedPlan = plan;
+            document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        };
+
+        window.finalizeOnboarding = async () => {
+            const bizName = document.getElementById('bizName').value;
+            const bizType = document.getElementById('bizType').value;
+            const email = document.getElementById('adminEmail').value;
+            const pass = document.getElementById('adminPass').value;
+
+            if (!bizName || !email || !pass) return alert("Completa todos los datos galácticos.");
+
+            try {
+                // 1. Crear Usuario en Supabase Auth
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email,
+                    password: pass,
+                    options: {
+                        data: {
+                            business_name: bizName,
+                            full_name: 'Admin Alien'
+                        }
+                    }
+                });
+
+                if (authError) throw authError;
+
+                // 2. Crear Negocio en la DB
+                const bizId = 'BIZ_' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                const { error: bizError } = await supabase.from('businesses').insert({
+                    id: bizId,
+                    name: bizName,
+                    type: bizType,
+                    plan_type: selectedPlan,
+                    subscription_active: true
+                });
+
+                if (bizError) throw bizError;
+
+                alert("¡Misión Exitosa! Tu portal está listo.");
+                window.location.href = './CentroOperaciones.html';
+                
+            } catch (err) {
+                alert("Falla en el motor de ignición: " + err.message);
+                console.error(err);
+            }
+        };
+    </script>
+</body>
+</html>

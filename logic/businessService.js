@@ -47,7 +47,9 @@ export class BusinessService {
                 price_per_unit: config.pricePerUnit,
                 theme_primary: config.theme?.primary || config.primary,
                 theme_bg: config.theme?.bg || config.bg,
-                rules: config.rules
+                rules: config.rules,
+                plan_type: config.plan_type || 'FREE',
+                subscription_active: config.subscription_active !== undefined ? config.subscription_active : true
             });
 
         if (error) {
