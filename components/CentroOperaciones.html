@@ -549,6 +549,8 @@
             currentBusinessId: 'REST_001',
             users: [], // Sync from Supabase in renderUsers()
             cart: [],
+            userRole: 'PILOT', // Rol de la cuenta logueada
+            userEmail: '', // Email de la cuenta logueada
             customConfig: JSON.parse(localStorage.getItem('custom_brand')) || {
                 id: 'CUSTOM',
                 name: 'Mi Negocio Alien',
@@ -578,12 +580,11 @@
                 document.getElementById('configBgColor').value = biz.theme_bg || (bg.startsWith('#') ? bg : '#050505');
 
                 // Visual Gating for Theme
-                const canTheme = planService.isFeatureEnabled(biz, 'custom_theme');
+                const canTheme = planService.isFeatureEnabled(biz, 'custom_theme', state.userRole, state.userEmail);
                 document.getElementById('configPrimaryColor').disabled = !canTheme;
                 document.getElementById('configBgColor').disabled = !canTheme;
                 if (!canTheme) {
                     console.log("Personalización de colores bloqueada por plan.");
-                    // Podríamos añadir un badge de "Upgrade" aquí
                 }
 
                 // Loyalty Rules Population
@@ -640,9 +641,10 @@
                 document.documentElement.style.setProperty('--primary', primary);
                 document.documentElement.style.setProperty('--bg-dark', bg);
                 
-                const planName = planService.getPlanName(biz);
+                const planName = planService.getPlanName(biz, state.userRole, state.userEmail);
                 document.getElementById('displayBizName').innerText = biz.name;
-                document.getElementById('displayPlan').innerText = `PLAN: ${planName}`;
+                const isMaster = state.userRole === 'MASTER' || ['santiagovv0831@gmail.com'].includes(state.userEmail);
+                document.getElementById('displayPlan').innerText = isMaster ? `PLAN: MASTER POWER (ULTRA)` : `PLAN: ${planName}`;
                 document.getElementById('displayPlan').style.color = biz.subscription_active ? 'var(--primary)' : '#ff4444';
                 
                 document.getElementById('businessLogo').innerText = biz.name.charAt(0);
@@ -663,14 +665,24 @@
 
         async function populateBusinessSelector() {
             const select = document.getElementById('activeBusiness');
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (!authUser) return;
             
-            if (!user) return;
-
-            const { data: businesses } = await supabase
-                .from('businesses')
-                .select('id, name, type')
-                .eq('owner_id', user.id); // Filtrado explícito por dueño
+            let businesses = [];
+            const isMaster = state.userRole === 'MASTER' || authUser.email === 'santiagovv0831@gmail.com';
+            
+            if (isMaster) {
+                // El MASTER ve TODO el universo
+                const { data: allBiz } = await supabase.from('businesses').select('id, name, type');
+                businesses = allBiz || [];
+            } else {
+                // Los PILOTOS solo ven sus propios negocios
+                const { data: myBiz } = await supabase
+                    .from('businesses')
+                    .select('id, name, type')
+                    .eq('owner_id', authUser.id);
+                businesses = myBiz || [];
+            }
             
             if (businesses && businesses.length > 0) {
                 // Si no hay nada seleccionado o el actual no está en la lista permitida
@@ -1018,8 +1030,9 @@
                 const { data: currentProducts } = await supabase.from('products').select('id', { count: 'exact' }).eq('business_id', state.currentBusinessId);
                 const count = currentProducts ? currentProducts.length : 0;
                 
-                const canAdd = await planService.checkLimit(state.currentBusinessConfig, 'products', count);
-                if (!canAdd) {
+                const canAdd = await planService.isFeatureEnabled(state.currentBusinessConfig, 'products', state.userRole, state.userEmail);
+                const isMaster = state.userRole === 'MASTER' || state.userEmail === 'santiagovv0831@gmail.com';
+                if (!canAdd && !isMaster) {
                     return alert(`👽 ¡Límite alcanzado! Tu plan actual (${planService.getPlanName(state.currentBusinessConfig)}) solo permite ${planService.getPlan(state.currentBusinessConfig).limits.products} productos. ¡Sube de nivel para expandir tu catálogo!`);
                 }
 
@@ -1407,6 +1420,17 @@
             // AUTH CHECK RIGUROSO
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
+                // Fetch User Role from DB
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('role, email')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                state.userRole = userData?.role || 'PILOT';
+                state.userEmail = session.user.email; // From Session directly for safety
+                console.log("Sesión iniciada. Rol:", state.userRole, "Email:", state.userEmail);
+
                 document.getElementById('loginShield').style.display = 'none';
             } else {
                 document.getElementById('loginShield').style.display = 'flex';

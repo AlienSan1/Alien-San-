@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
     rewards_available INTEGER DEFAULT 0,
     merit_score NUMERIC DEFAULT 0,
     joined_at TIMESTAMPTZ DEFAULT NOW(),
-    business_id TEXT REFERENCES businesses(id)
+    business_id TEXT REFERENCES businesses(id),
+    role TEXT DEFAULT 'PILOT' CHECK (role IN ('MASTER', 'PILOT'))
 );
 
 -- 3. Table for Products/Services
