@@ -213,6 +213,57 @@
             border-color: var(--primary);
         }
 
+        /* LOGIN SHIELD STYLES */
+        #loginShield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 5, 0, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #00f2ff;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.1);
+            width: 350px;
+        }
+
+        .login-card h2 {
+            margin-bottom: 25px;
+            letter-spacing: 3px;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #00f2ff;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+        }
+
+        .login-card input:focus {
+            border-color: #00f2ff;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
         /* Responsive */
         @media (max-width: 1100px) {
             .main-grid {
@@ -223,6 +274,17 @@
 </head>
 
 <body>
+    <!-- LOGIN SHIELD -->
+    <div id="loginShield">
+        <div class="login-card">
+            <h1 style="font-size: 3rem; margin: 0;">👽</h1>
+            <h2 class="alien-font">Acceso Restringido</h2>
+            <p style="opacity: 0.6; font-size: 0.8rem; margin-bottom: 20px;">INGRESE CLAVE DE COMANDO MAESTRA</p>
+            <input type="password" id="adminPassword" placeholder="••••••••" onkeypress="if(event.key === 'Enter') attemptLogin()">
+            <button class="btn-action" onclick="attemptLogin()">AUTORIZAR INGRESO</button>
+            <div id="loginError" style="color: #ff4444; font-size: 0.8rem; margin-top: 15px; display: none;">👽 CLAVE INCORRECTA. ACCESO DENEGADO.</div>
+        </div>
+    </div>
     <div id="loader" style="position:fixed; top:10px; right:50%; transform:translateX(50%); background:var(--primary); color:black; padding:5px 15px; border-radius:20px; font-size:0.7rem; font-weight:bold; display:none; z-index:10000; box-shadow:0 0 15px var(--primary);">CARGANDO DATOS...</div>
     <div class="dashboard-header">
         <div class="brand-container">
@@ -1300,13 +1362,40 @@
         }
 
         async function init() {
+            // AUTH CHECK
+            const isAuth = sessionStorage.getItem('alien_admin_auth');
+            if (isAuth === 'true') {
+                document.getElementById('loginShield').style.display = 'none';
+            } else {
+                return; // Bloquear carga si no está autorizado
+            }
+
             await testConnection();
             await populateBusinessSelector(); // 1. Populate first
             await updateBusinessContext();    // 2. Load data for the selected one
             renderNotifications();
         }
 
-        init();
+        window.attemptLogin = () => {
+            const pass = document.getElementById('adminPassword').value;
+            // CLAVE MAESTRA TEMPORAL (Se recomienda cambiar o usar Supabase Auth en el futuro)
+            const MASTER_KEY = 'ALIEN-SAN-MASTER'; 
+
+            if (pass === MASTER_KEY) {
+                sessionStorage.setItem('alien_admin_auth', 'true');
+                document.getElementById('loginShield').style.display = 'none';
+                init(); // Iniciar carga de datos al autorizar
+            } else {
+                const err = document.getElementById('loginError');
+                err.style.display = 'block';
+                setTimeout(() => err.style.display = 'none', 3000);
+            }
+        };
+
+        // Verificación de seguridad inmediata
+        if (sessionStorage.getItem('alien_admin_auth') === 'true') {
+            init();
+        }
     </script>
 </body>
 
