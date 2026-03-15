@@ -267,7 +267,7 @@
 
     <script type="module">
         import { supabase } from '../logic/supabaseClient.js';
-        import { stripeService } from '../logic/stripeService.js';
+        import { wompiService } from '../logic/wompiService.js';
         
         let currentStep = 1;
         let selectedPlan = 'FREE';
@@ -298,7 +298,8 @@
             } else {
                 // Setup and show payment step
                 document.getElementById('payPlanName').innerText = `PLAN ALIEN ${selectedPlan}`;
-                document.getElementById('payPlanPrice').innerText = selectedPlan === 'PRO' ? '$29 / mes' : '$99 / mes';
+                const price = wompiService.PRICES[selectedPlan];
+                document.getElementById('payPlanPrice').innerText = `$${price.toLocaleString()} COP / mes`;
                 
                 // Pre-flight call to Stripe Service
                 console.log("Preparando sesión de pago...");
@@ -308,15 +309,16 @@
 
         window.processPayment = async () => {
             const email = document.getElementById('adminEmail').value;
+            const bizName = document.getElementById('bizName').value; // We might need a temp reference
             try {
-                const session = await stripeService.createCheckoutSession(selectedPlan, email);
-                if (session.success) {
-                    // En un sistema real, aquí la página se redirecciona.
-                    // Para esta versión, continuamos al registro tras el "pago exitoso".
+                // In a production app, we would ideally create the business in 'pending' status
+                // and then confirm via webhook. For this demo, we open the checkout and then finalize.
+                const result = await wompiService.openCheckout(selectedPlan, email, 'MKT_NEW_BIZ');
+                if (result.success) {
                     finalizeOnboarding();
                 }
             } catch (err) {
-                alert("Error en la pasarela de pago: " + err.message);
+                alert("Error en la pasarela de pago Wompi: " + err.message);
             }
         };
 
